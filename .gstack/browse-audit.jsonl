@@ -1,0 +1,41 @@
+{"ts":"2026-07-24T22:23:04.081Z","cmd":"goto","args":"http://localhost:3000/register","origin":"http://localhost:3000/register","durationMs":99,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:04.206Z","cmd":"snapshot","args":"-i","origin":"http://localhost:3000/register","durationMs":47,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:20.459Z","cmd":"fill","args":"@e2 Ravichandran Palanisamy","origin":"http://localhost:3000/register","durationMs":65,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:20.497Z","cmd":"fill","args":"@e3 ravi@rbw.test","origin":"http://localhost:3000/register","durationMs":5,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:20.531Z","cmd":"fill","args":"@e4 password123","origin":"http://localhost:3000/register","durationMs":5,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:20.564Z","cmd":"fill","args":"@e5 RID-1001","origin":"http://localhost:3000/register","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:20.596Z","cmd":"fill","args":"@e6 3201","origin":"http://localhost:3000/register","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:20.628Z","cmd":"fill","args":"@e7 RC Coimbatore North","origin":"http://localhost:3000/register","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:20.661Z","cmd":"fill","args":"@e8 India","origin":"http://localhost:3000/register","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:20.724Z","cmd":"click","args":"@e9","origin":"http://localhost:3000/register","durationMs":34,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:22.793Z","cmd":"url","args":"","origin":"http://localhost:3000/dashboard","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:22.828Z","cmd":"text","args":"","origin":"http://localhost:3000/dashboard","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:43.755Z","cmd":"goto","args":"http://localhost:3000/dashboard","origin":"http://localhost:3000/dashboard","durationMs":61,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:43.841Z","cmd":"goto","args":"http://localhost:3000/register","origin":"http://localhost:3000/register","durationMs":46,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:43.880Z","cmd":"fill","args":"@e2 Random Nonmember","origin":"http://localhost:3000/register","durationMs":0,"status":"error","hasCookies":false,"mode":"launched","error":"Ref @e2 not found. Run 'snapshot' to get fresh refs."}
+{"ts":"2026-07-24T22:23:43.910Z","cmd":"fill","args":"@e3 random@rbw.test","origin":"http://localhost:3000/register","durationMs":0,"status":"error","hasCookies":false,"mode":"launched","error":"Ref @e3 not found. Run 'snapshot' to get fresh refs."}
+{"ts":"2026-07-24T22:23:43.938Z","cmd":"fill","args":"@e4 password123","origin":"http://localhost:3000/register","durationMs":0,"status":"error","hasCookies":false,"mode":"launched","error":"Ref @e4 not found. Run 'snapshot' to get fresh refs."}
+{"ts":"2026-07-24T22:23:43.968Z","cmd":"fill","args":"@e5 FAKE-9999","origin":"http://localhost:3000/register","durationMs":1,"status":"error","hasCookies":false,"mode":"launched","error":"Ref @e5 not found. Run 'snapshot' to get fresh refs."}
+{"ts":"2026-07-24T22:23:43.995Z","cmd":"fill","args":"@e6 9999","origin":"http://localhost:3000/register","durationMs":0,"status":"error","hasCookies":false,"mode":"launched","error":"Ref @e6 not found. Run 'snapshot' to get fresh refs."}
+{"ts":"2026-07-24T22:23:44.022Z","cmd":"fill","args":"@e7 RC Nowhere","origin":"http://localhost:3000/register","durationMs":0,"status":"error","hasCookies":false,"mode":"launched","error":"Ref @e7 not found. Run 'snapshot' to get fresh refs."}
+{"ts":"2026-07-24T22:23:44.050Z","cmd":"fill","args":"@e8 Nowhere","origin":"http://localhost:3000/register","durationMs":0,"status":"error","hasCookies":false,"mode":"launched","error":"Ref @e8 not found. Run 'snapshot' to get fresh refs."}
+{"ts":"2026-07-24T22:23:44.077Z","cmd":"click","args":"@e9","origin":"http://localhost:3000/register","durationMs":0,"status":"error","hasCookies":false,"mode":"launched","error":"Ref @e9 not found. Run 'snapshot' to get fresh refs."}
+{"ts":"2026-07-24T22:23:46.147Z","cmd":"url","args":"","origin":"http://localhost:3000/register","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:23:46.180Z","cmd":"text","args":"","origin":"http://localhost:3000/register","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.171Z","cmd":"goto","args":"http://localhost:3000/register","origin":"http://localhost:3000/register","durationMs":39,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.222Z","cmd":"snapshot","args":"-i","origin":"http://localhost:3000/register","durationMs":8,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.690Z","cmd":"fill","args":"@e2 Random Nonmember","origin":"http://localhost:3000/register","durationMs":437,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.751Z","cmd":"fill","args":"@e3 random@rbw.test","origin":"http://localhost:3000/register","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.786Z","cmd":"fill","args":"@e4 password123","origin":"http://localhost:3000/register","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.819Z","cmd":"fill","args":"@e5 FAKE-9999","origin":"http://localhost:3000/register","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.851Z","cmd":"fill","args":"@e6 9999","origin":"http://localhost:3000/register","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.883Z","cmd":"fill","args":"@e7 RC Nowhere","origin":"http://localhost:3000/register","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.915Z","cmd":"fill","args":"@e8 Nowhere","origin":"http://localhost:3000/register","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:11.955Z","cmd":"click","args":"@e9","origin":"http://localhost:3000/register","durationMs":12,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:14.027Z","cmd":"url","args":"","origin":"http://localhost:3000/dashboard","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:14.062Z","cmd":"text","args":"","origin":"http://localhost:3000/dashboard","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:33.748Z","cmd":"viewport","args":"1280x900","origin":"http://localhost:3000/dashboard","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:33.832Z","cmd":"goto","args":"http://localhost:3000/","origin":"http://localhost:3000/","durationMs":52,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:34.035Z","cmd":"screenshot","args":"/tmp/rbw-landing.png","origin":"http://localhost:3000/","durationMs":160,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:34.139Z","cmd":"goto","args":"http://localhost:3000/directory","origin":"http://localhost:3000/directory","durationMs":74,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-24T22:24:34.206Z","cmd":"screenshot","args":"/tmp/rbw-directory.png","origin":"http://localhost:3000/directory","durationMs":33,"status":"ok","hasCookies":false,"mode":"launched"}

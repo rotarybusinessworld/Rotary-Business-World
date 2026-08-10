@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Rotary Business World — premium identity.
+   Deep navy + refined gold + serif display, drawn from the RBW emblem.
+   Light, spacious content surfaces; dark navy chrome (header/hero/footer).
+--------------------------------------------------------------------------- */
+@theme {
+  /* Brand — navy & gold from the logo */
+  --color-navy: #0b1226;
+  --color-navy-800: #111a33;
+  --color-navy-700: #1a2445;
+  --color-navy-600: #26325a;
+  --color-rotary-blue: #16244c;
+  --color-rotary-blue-dark: #0b1226;
+  --color-rotary-gold: #c9a24c;
+  --color-rotary-gold-light: #e6c877;
+  --color-rotary-gold-dark: #a5822f;
+
+  /* Semantic surfaces — warm, light, editorial */
+  --color-background: #f5f6fa;
+  --color-foreground: #101828;
+  --color-card: #ffffff;
+  --color-card-foreground: #101828;
+  --color-muted: #eef1f6;
+  --color-muted-foreground: #616b82;
+  --color-border: #e5e8f0;
+  --color-input: #dde1ec;
+  --color-ring: #c9a24c;
+
+  --color-primary: #16244c;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #c9a24c;
+  --color-secondary-foreground: #1c1405;
+  --color-accent: #eef1f8;
+  --color-accent-foreground: #16244c;
+  --color-success: #1a7f4b;
+  --color-destructive: #c0392b;
+
+  /* Type + shape */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --radius: 0.85rem;
+
+  /* Layered, restrained shadows read as “expensive” */
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 6px 20px rgb(16 24 40 / 0.06);
+  --shadow-pop: 0 18px 50px -12px rgb(16 24 40 / 0.25);
+  --shadow-gold: 0 10px 30px -8px rgb(201 162 76 / 0.45);
+
+  /* Motion — dignified, ease-out entrances. `both` keeps elements hidden
+     until their (possibly delayed) animation begins, so staggers don't flash. */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-in: fade-in 0.5s ease-out both;
+  --animate-fade-in-up: fade-in-up 0.6s var(--ease-out-soft) both;
+  --animate-scale-in: scale-in 0.5s var(--ease-out-soft) both;
+  --animate-shimmer: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Serif display headings get subtle optical polish */
+.font-display,
+[class*="font-[family-name:var(--font-display)]"] {
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-rotary-gold) 30%, transparent);
+}
+
+/* A faint gold hairline utility for the dark chrome */
+.gold-hairline {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-rotary-gold) 30%, transparent);
+}
+
+/* Gentle entrance stagger — pair with an animate-* utility on grid/list items */
+.stagger-1 { animation-delay: 60ms; }
+.stagger-2 { animation-delay: 120ms; }
+.stagger-3 { animation-delay: 180ms; }
+.stagger-4 { animation-delay: 240ms; }
+.stagger-5 { animation-delay: 300ms; }
+
+/* Shimmer skeleton surface for async/empty states */
+.skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-muted) 25%,
+    color-mix(in srgb, var(--color-muted) 55%, #ffffff) 37%,
+    var(--color-muted) 63%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+/* Honor the OS "reduce motion" setting: neutralize animation + transitions */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

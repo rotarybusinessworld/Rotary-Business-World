@@ -1,0 +1,262 @@
+// Rotary Business World — data model
+// Search note: `Business.searchVector` (tsvector), the GIN indexes, and the
+// pg_trgm extension are added by a raw SQL migration (see prisma/sql/) because
+// Postgres generated columns are not expressible in Prisma schema. Queries use
+// $queryRaw through lib/search.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pg_trgm]
+}
+
+enum Role {
+  MEMBER
+  CLUB_ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum BusinessStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ---------------------------------------------------------------------------
+// Identity & membership
+// ---------------------------------------------------------------------------
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  passwordHash   String
+  role           Role       @default(MEMBER)
+  status         UserStatus @default(PENDING)
+  emailVerifiedAt DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  profile              Profile?
+  rotaryInfo           RotaryInfo?
+  businesses           Business[]
+  verificationRequests VerificationRequest[] @relation("RequestUser")
+  reviewedRequests     VerificationRequest[] @relation("ReviewerUser")
+  emailTokens          EmailVerificationToken[]
+
+  @@index([status])
+}
+
+model Profile {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName  String
+  photoUrl  String?
+  bio       String?
+  phone     String?
+  whatsapp  String?
+  city      String?
+  country   String?
+  website   String?
+  linkedin  String?
+  instagram String?
+
+  @@index([country, city])
+}
+
+model RotaryInfo {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rotaryId       String?
+  clubId         String?
+  club           Club?     @relation(fields: [clubId], references: [id])
+  districtId     String?
+  district       District? @relation(fields: [districtId], references: [id])
+  classification String?
+  memberSince    Int?
+  matchedRosterId String?
+  matchedRoster  RosterMember? @relation(fields: [matchedRosterId], references: [id])
+
+  @@unique([matchedRosterId]) // one verified account per roster identity (NULLs allowed)
+  @@index([rotaryId])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Rotary reference data (seeded via roster import)
+// ---------------------------------------------------------------------------
+
+model District {
+  id      String  @id @default(cuid())
+  code    String  @unique // e.g. "3201"
+  name    String?
+  country String?
+
+  clubs        Club[]
+  rotaryInfos  RotaryInfo[]
+  rosterMembers RosterMember[]
+
+  @@index([country])
+}
+
+model Club {
+  id         String   @id @default(cuid())
+  name       String
+  districtId String
+  district   District @relation(fields: [districtId], references: [id])
+  city       String?
+  country    String?
+
+  rotaryInfos   RotaryInfo[]
+  rosterMembers RosterMember[]
+
+  @@unique([name, districtId])
+  @@index([country, city])
+}
+
+/// The authoritative global roster that signups are verified against.
+model RosterMember {
+  id           String    @id @default(cuid())
+  rotaryId     String?
+  fullName     String
+  email        String?
+  phone        String?
+  clubName     String?
+  districtCode String?
+  clubId       String?
+  club         Club?     @relation(fields: [clubId], references: [id])
+  districtId   String?
+  district     District?  @relation(fields: [districtId], references: [id])
+  source       String    @default("import")
+  importedAt   DateTime  @default(now())
+
+  matchedInfos RotaryInfo[]
+
+  @@index([rotaryId])
+  @@index([email])
+  @@index([fullName(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+// ---------------------------------------------------------------------------
+// Business directory
+// ---------------------------------------------------------------------------
+
+model Industry {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  slug       String     @unique
+  categories Category[]
+  businesses Business[]
+}
+
+model Category {
+  id         String     @id @default(cuid())
+  name       String
+  slug       String     @unique
+  industryId String
+  industry   Industry   @relation(fields: [industryId], references: [id])
+  businesses Business[]
+
+  @@unique([name, industryId])
+}
+
+model Business {
+  id          String         @id @default(cuid())
+  ownerId     String
+  owner       User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String         @unique
+  description String?
+  logoUrl     String?
+  coverUrl    String?
+  industryId  String?
+  industry    Industry?      @relation(fields: [industryId], references: [id])
+  categoryId  String?
+  category    Category?      @relation(fields: [categoryId], references: [id])
+  // Denormalized taxonomy text so the generated tsvector (raw SQL) can index it
+  // without cross-table triggers. Kept in sync on every business write.
+  industryName String?
+  categoryName String?
+  website     String?
+  email       String?
+  phone       String?
+  whatsapp    String?
+  addressLine String?
+  city        String?
+  country     String?
+  lat         Float?
+  lng         Float?
+  linkedin    String?
+  instagram   String?
+  status      BusinessStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  images BusinessImage[]
+
+  // Declared so Prisma is aware of the column and never DROPs it. The column is
+  // turned into a STORED generated column by a hand-edited migration; Prisma
+  // treats it as an opaque tsvector it should keep.
+  searchVector Unsupported("tsvector")?
+
+  @@index([industryId])
+  @@index([categoryId])
+  @@index([country, city])
+  @@index([status])
+  @@index([searchVector], type: Gin)
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+model BusinessImage {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  url        String
+  sortOrder  Int      @default(0)
+
+  @@index([businessId])
+}
+
+model VerificationRequest {
+  id            String             @id @default(cuid())
+  userId        String
+  user          User               @relation("RequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  submittedInfo Json
+  status        VerificationStatus @default(PENDING)
+  reviewedById  String?
+  reviewedBy    User?              @relation("ReviewerUser", fields: [reviewedById], references: [id])
+  note          String?
+  createdAt     DateTime           @default(now())
+  reviewedAt    DateTime?
+
+  @@index([status])
+  @@index([userId])
+}
