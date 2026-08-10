@@ -32,3 +32,12 @@ export function assertAdmin(actor: Actor | null | undefined): Actor {
   }
   return actor;
 }
+
+/** Throws unless the actor is a super-admin (management account). */
+export function assertSuperAdmin(actor: Actor | null | undefined): Actor {
+  if (!actor) throw new UnauthorizedError();
+  if (actor.role !== "SUPER_ADMIN") {
+    throw new ForbiddenError("Super-admin access required");
+  }
+  return actor;
+}

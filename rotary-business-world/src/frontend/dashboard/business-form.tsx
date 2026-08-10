@@ -74,15 +74,47 @@ export function BusinessForm({
     <form action={formAction} className="space-y-6">
       <FormError message={state.error} />
 
-      {/* Images */}
-      <div className="flex flex-wrap gap-6">
-        <div>
-          <Label>Logo</Label>
-          <ImageUpload folder="logos" value={logoUrl} onChange={setLogoUrl} />
+      {/* ── Photos ───────────────────────────────────────────── */}
+      <div className="rounded-[var(--radius)] border border-border p-5">
+        <h3 className="font-[family-name:var(--font-display)] text-base font-semibold">
+          Photos
+        </h3>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          A great cover + logo makes your listing stand out across the directory.
+        </p>
+
+        {/* Logo + Cover row */}
+        <div className="mt-5 flex flex-wrap gap-6">
+          <div>
+            <Label>Logo</Label>
+            <ImageUpload
+              folder="logos"
+              value={logoUrl}
+              onChange={setLogoUrl}
+              hint="Square, e.g. 400×400 px"
+            />
+          </div>
+          <div className="min-w-[240px] flex-1">
+            <Label>Cover image</Label>
+            <ImageUpload
+              folder="covers"
+              value={coverUrl}
+              onChange={setCoverUrl}
+              aspect="wide"
+              hint="Recommended ~1600×500 px"
+            />
+          </div>
         </div>
-        <div className="min-w-[240px] flex-1">
-          <Label>Cover image</Label>
-          <ImageUpload folder="covers" value={coverUrl} onChange={setCoverUrl} aspect="wide" />
+
+        {/* Gallery */}
+        <div className="mt-5">
+          <Label>
+            Gallery{" "}
+            <span className="font-normal text-muted-foreground">(up to 12)</span>
+          </Label>
+          <div className="mt-2">
+            <GalleryUpload value={gallery} onChange={setGallery} />
+          </div>
         </div>
       </div>
 
@@ -181,12 +213,6 @@ export function BusinessForm({
           <Label htmlFor="country">Country</Label>
           <Input id="country" name="country" defaultValue={defaults.country ?? ""} />
         </div>
-      </div>
-
-      {/* Gallery */}
-      <div>
-        <Label>Photo gallery</Label>
-        <GalleryUpload value={gallery} onChange={setGallery} />
       </div>
 
       {/* Hidden carriers for uploaded URLs */}

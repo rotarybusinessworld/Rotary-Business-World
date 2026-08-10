@@ -1,19 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/shared/utils";
 import type { Facet } from "@/backend/search/types";
-
-type Current = Record<string, string | undefined>;
-
-function withParam(current: Current, key: string, value?: string): string {
-  const next = new URLSearchParams();
-  for (const [k, v] of Object.entries(current)) {
-    if (v && k !== "page") next.set(k, v);
-  }
-  if (value && current[key] !== value) next.set(key, value);
-  else next.delete(key);
-  const qs = next.toString();
-  return qs ? `/directory?${qs}` : "/directory";
-}
+import { withParam, clearFiltersHref, type FacetCurrent } from "./facet-utils";
 
 function FacetGroup({
   title,
@@ -24,16 +12,16 @@ function FacetGroup({
   title: string;
   paramKey: string;
   facets: Facet[];
-  current: Current;
+  current: FacetCurrent;
 }) {
   if (facets.length === 0) return null;
   const active = current[paramKey];
   return (
     <div>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
         {title}
       </h3>
-      <ul className="space-y-0.5">
+      <ul>
         {facets.map((f) => {
           const isActive = active === f.value;
           return (
@@ -41,8 +29,10 @@ function FacetGroup({
               <Link
                 href={withParam(current, paramKey, f.value)}
                 className={cn(
-                  "flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted",
-                  isActive && "bg-accent font-medium text-accent-foreground",
+                  "flex min-h-[40px] items-center justify-between rounded-lg px-2 py-2 text-sm transition-colors duration-150 hover:bg-muted",
+                  isActive
+                    ? "bg-accent font-medium text-accent-foreground"
+                    : "text-foreground/80",
                 )}
               >
                 <span className="truncate">{f.value}</span>
@@ -63,26 +53,41 @@ export function FacetSidebar({
   current,
 }: {
   facets: { industry: Facet[]; country: Facet[] };
-  current: Current;
+  current: FacetCurrent;
 }) {
   const hasFilters = current.industry || current.country || current.city;
   return (
-    <aside className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-[family-name:var(--font-display)] font-semibold">
+    <div className="rounded-[var(--radius)] border border-border bg-card shadow-[var(--shadow-card)]">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
+        <h2 className="font-[family-name:var(--font-display)] text-sm font-semibold">
           Filters
         </h2>
         {hasFilters && (
           <Link
-            href={current.q ? `/directory?q=${encodeURIComponent(current.q)}` : "/directory"}
+            href={clearFiltersHref(current)}
             className="text-xs text-primary hover:underline"
           >
             Clear all
           </Link>
         )}
       </div>
-      <FacetGroup title="Industry" paramKey="industry" facets={facets.industry} current={current} />
-      <FacetGroup title="Country" paramKey="country" facets={facets.country} current={current} />
-    </aside>
+
+      {/* Filter groups */}
+      <div className="space-y-5 p-3">
+        <FacetGroup
+          title="Industry"
+          paramKey="industry"
+          facets={facets.industry}
+          current={current}
+        />
+        <FacetGroup
+          title="Country"
+          paramKey="country"
+          facets={facets.country}
+          current={current}
+        />
+      </div>
+    </div>
   );
 }

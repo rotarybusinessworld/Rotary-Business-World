@@ -65,7 +65,7 @@ export function SearchBar() {
           e.preventDefault();
           submit(value);
         }}
-        className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5 shadow-[var(--shadow-card)]"
+        className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5 shadow-[var(--shadow-card)] transition-[box-shadow,border-color] duration-200 focus-within:border-primary/40 focus-within:shadow-[var(--shadow-pop)]"
       >
         <div className="flex flex-1 items-center gap-2 pl-3">
           <Search className="h-5 w-5 text-muted-foreground" />
@@ -95,7 +95,7 @@ export function SearchBar() {
         </div>
         <button
           type="submit"
-          className="inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-rotary-blue-dark"
+          className="inline-flex h-10 shrink-0 items-center rounded-full bg-rotary-gold px-5 text-sm font-semibold text-secondary-foreground transition-all duration-200 ease-out hover:-translate-y-px hover:bg-rotary-gold-light"
         >
           Search
         </button>

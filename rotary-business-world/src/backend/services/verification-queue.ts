@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/backend/db";
 import { verifyAgainstRoster } from "@/backend/verification";
 import { assertAdmin, type Actor } from "@/backend/actor";
-import { NotFoundError } from "@/backend/errors";
+import { ForbiddenError, NotFoundError } from "@/backend/errors";
 
 /** Admin review queue for signups the roster match couldn't auto-verify. */
 
@@ -13,22 +13,61 @@ type SubmittedInfo = {
 };
 
 /**
+ * Assert that the admin is allowed to act on a request belonging to `targetDistrictId`.
+ *
+ * - SUPER_ADMIN (managedDistrictId === null) → always allowed.
+ * - CLUB_ADMIN → only if their managedDistrictId matches the target's district.
+ *
+ * Throws ForbiddenError on mismatch (prevents IDOR: a club admin guessing another
+ * district's request id).
+ */
+function assertDistrictScope(
+  managedDistrictId: string | null,
+  targetDistrictId: string | null | undefined,
+  requestId: string,
+): void {
+  if (managedDistrictId === null) return; // SUPER_ADMIN — sees all
+  if (!targetDistrictId || targetDistrictId !== managedDistrictId) {
+    throw new ForbiddenError(
+      `Request ${requestId} does not belong to your managed district`,
+    );
+  }
+}
+
+/**
  * Approve a pending member: mark VERIFIED and link a roster identity if free.
- * Throws `NotFoundError` if the request is missing or already reviewed.
+ *
+ * @param managedDistrictId  null → caller is SUPER_ADMIN (no scoping).
+ *                           string → caller is CLUB_ADMIN and must match target's district.
  */
 export async function approveVerification(
   actor: Actor,
   requestId: string,
+  managedDistrictId: string | null = null,
 ): Promise<void> {
   const admin = assertAdmin(actor);
 
   const request = await db.verificationRequest.findUnique({
     where: { id: requestId },
-    include: { user: { include: { profile: true, rotaryInfo: true } } },
+    include: {
+      user: {
+        include: {
+          profile: true,
+          rotaryInfo: { select: { matchedRosterId: true, districtId: true } },
+        },
+      },
+    },
   });
   if (!request || request.status !== "PENDING") {
     throw new NotFoundError("No pending verification request with that id");
   }
+
+  // Scope check — must happen AFTER load so we treat missing == not-found (no info leak).
+  assertDistrictScope(
+    managedDistrictId,
+    request.user.rotaryInfo?.districtId,
+    requestId,
+  );
 
   const info = (request.submittedInfo ?? {}) as SubmittedInfo;
 
@@ -75,19 +114,35 @@ export async function approveVerification(
 
 /**
  * Reject a pending member.
- * Throws `NotFoundError` if the request is missing or already reviewed.
+ *
+ * @param managedDistrictId  null → SUPER_ADMIN (no scoping). string → CLUB_ADMIN, must match.
  */
 export async function rejectVerification(
   actor: Actor,
   requestId: string,
   note?: string,
+  managedDistrictId: string | null = null,
 ): Promise<void> {
   const admin = assertAdmin(actor);
 
-  const request = await db.verificationRequest.findUnique({ where: { id: requestId } });
+  const request = await db.verificationRequest.findUnique({
+    where: { id: requestId },
+    include: {
+      user: {
+        select: { rotaryInfo: { select: { districtId: true } } },
+      },
+    },
+  });
   if (!request || request.status !== "PENDING") {
     throw new NotFoundError("No pending verification request with that id");
   }
+
+  // Scope check.
+  assertDistrictScope(
+    managedDistrictId,
+    request.user.rotaryInfo?.districtId,
+    requestId,
+  );
 
   await db.$transaction([
     db.user.update({

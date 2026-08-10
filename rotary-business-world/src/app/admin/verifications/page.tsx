@@ -1,4 +1,5 @@
 import { db } from "@/backend/db";
+import { getAdminScope } from "@/backend/auth-helpers";
 import { Card, CardContent } from "@/frontend/ui/card";
 import { Badge } from "@/frontend/ui/badge";
 import { Button } from "@/frontend/ui/button";
@@ -16,26 +17,50 @@ type SubmittedInfo = {
 };
 
 export default async function VerificationsPage() {
+  const { managedDistrictId } = await getAdminScope();
+
+  // SUPER_ADMIN sees all districts; CLUB_ADMIN sees only their district.
+  const districtFilter = managedDistrictId
+    ? { user: { rotaryInfo: { districtId: managedDistrictId } } }
+    : {};
+
   const [pending, recent] = await Promise.all([
     db.verificationRequest.findMany({
-      where: { status: "PENDING" },
+      where: { status: "PENDING", ...districtFilter },
       orderBy: { createdAt: "asc" },
-      include: { user: { include: { profile: true } } },
+      include: {
+        user: {
+          include: {
+            profile: true,
+            rotaryInfo: { select: { districtId: true } },
+          },
+        },
+      },
     }),
     db.verificationRequest.findMany({
-      where: { status: { in: ["APPROVED", "REJECTED"] } },
+      where: { status: { in: ["APPROVED", "REJECTED"] }, ...districtFilter },
       orderBy: { reviewedAt: "desc" },
       take: 8,
-      include: { user: { include: { profile: true } }, reviewedBy: { include: { profile: true } } },
+      include: {
+        user: { include: { profile: true } },
+        reviewedBy: { include: { profile: true } },
+      },
     }),
   ]);
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-          Verification queue
-        </h1>
+        <div className="min-w-0">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
+            Verification queue
+          </h1>
+          {managedDistrictId && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Showing your district only
+            </p>
+          )}
+        </div>
         <Badge variant={pending.length ? "gold" : "muted"}>
           <Clock className="h-3.5 w-3.5" /> {pending.length} pending
         </Badge>
@@ -47,7 +72,7 @@ export default async function VerificationsPage() {
             <Inbox className="h-8 w-8 text-muted-foreground" />
             <p className="mt-3 font-medium">The queue is clear</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              New signups that can’t be auto-verified against the roster will appear here.
+              New signups that can't be auto-verified against the roster will appear here.
             </p>
           </CardContent>
         </Card>

@@ -7,7 +7,9 @@ export const registerSchema = z.object({
   // Rotary details used for roster-match verification
   rotaryId: z.string().min(3, "Enter your Rotary / membership ID").max(40),
   clubName: z.string().min(2, "Enter your club name").max(160),
-  districtCode: z.string().min(1, "Enter your district").max(20),
+  // FK to District record — the picker stores the district id, not a raw code.
+  // The service resolves the district code from this id for roster matching.
+  districtId: z.string().min(1, "Select your district"),
   // Required contact number — lenient to allow international formats (+, spaces, -, ()).
   phone: z
     .string()

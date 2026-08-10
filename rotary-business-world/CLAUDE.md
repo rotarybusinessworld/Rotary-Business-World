@@ -2,9 +2,54 @@
 
 # Rotary Business World
 
-Worldwide, searchable business directory for **verified Rotarians**. Members register, get
-verified by matching against the official Rotary roster, and list their businesses (with photos).
-Anyone verified can search the directory to find fellow Rotarians in the same industry.
+A private, verified business directory for Rotarians — **trust is local, value is global.**
+Each district admin vouches only for members they can plausibly know; once verified, a member
+can search the entire worldwide directory.
+
+---
+
+## Product concept
+
+### Core loop
+
+```
+Rotarian registers → pays membership fee → enters district review queue
+  → district admin verifies against roster / local knowledge → approved
+  → member can list a business → district admin reviews & approves the listing
+  → listing goes live in the global directory
+  → any verified member worldwide can search & leave reviews
+```
+
+### Three roles
+
+| Role | Scope | Responsibilities |
+|------|-------|-----------------|
+| **Member** | Own account + own listings | Register, pay, list businesses, search, write reviews |
+| **District admin** | Their district only | Approve/reject member signups & business listings for their district; one or a few per district |
+| **Management account** | All districts | Cross-district stats + queues + revenue, create districts, assign district admins, override any district-level decision |
+
+### The seven pillars
+
+1. **Pay first.** A Rotarian registers, picks their home district, and pays the membership fee
+   upfront. Payment puts them in that district's review queue — it does not grant access.
+2. **District admin verifies identity.** The district admin checks the signup against the roster
+   (or personal knowledge) and approves or rejects. Approved members get full platform access.
+3. **Listing approval gate.** A verified member posts a business (name, category, description,
+   photos, location). It stays **PENDING** (invisible in search) until the district admin reviews
+   and approves it, keeping the directory clean.
+4. **Global search, local trust.** Approved listings are discoverable by any verified member
+   platform-wide. Search supports: keyword, location (nearest-to-me or a city/state/country),
+   industry + category filters, and sorting by distance, rating, or recency.
+5. **Reviews.** Verified members rate and review businesses they've dealt with. Only verified
+   members can post reviews; star ratings + review counts are the trust signal on top of verified
+   identity.
+6. **Management oversight.** The management account sees every district at a glance — member
+   counts, pending queues, revenue, review activity — and can create districts, assign/reassign
+   district admins, and override any district decision.
+7. **Structural growth.** New districts go live by creating the district record and assigning it
+   an admin. No code change required; the searchable pool grows automatically.
+
+---
 
 ## Stack
 
@@ -16,6 +61,8 @@ Anyone verified can search the directory to find fellow Rotarians in the same in
 - **AWS S3** for image uploads (via `@aws-sdk/client-s3`, behind `backend/storage`)
 - **Infra**: **Railway** = app + Postgres (co-located); **Hostinger** = domain/DNS + email (SMTP); **AWS S3** = uploads
 - Search: Postgres `tsvector` + `pg_trgm`, behind `backend/search` (swappable for Typesense later)
+
+---
 
 ## Project structure
 
@@ -39,6 +86,8 @@ only the four folders. Path alias `@/*` → `src/*` (so `@/backend/db`, `@/front
 The only server code outside `backend/` is what Next.js requires in `app/`: the `app/api/*`
 route handlers (thin — they validate then call `@/backend/*`) and Server Component pages.
 
+---
+
 ## Local dev
 
 Postgres is a throwaway Homebrew cluster on **port 5544** (see `.env`). If it's not running:
@@ -58,6 +107,8 @@ npm run build            # production build
 
 Scripts run through `node --env-file=.env --import tsx` because tsx (unlike the Prisma CLI)
 does not auto-load `.env`.
+
+---
 
 ## Deployment (Railway + Hostinger + AWS S3)
 
@@ -104,6 +155,8 @@ instance**, add Postgres connection pooling (Railway pooler / PgBouncer / Prisma
 > directly). Wiring Hostinger SMTP is net-new work — decide *what* to send first (email-verify
 > link flow vs admin notifications) before building it.
 
+---
+
 ## Architecture notes
 
 - **Search vector** (`Business.searchVector`) is a plain `tsvector` kept in sync by the
@@ -116,19 +169,75 @@ instance**, add Postgres connection pooling (Railway pooler / PgBouncer / Prisma
   (admin queue). PENDING users can log in and browse, but listing tools are gated.
 - **Search layer**: `getSearchService()` in `backend/search` returns the `SearchService`
   interface; only `postgres.ts` implements it today. Swap here, not in callers.
+- **Roles** (`enum Role` in schema): `MEMBER` / `CLUB_ADMIN` / `SUPER_ADMIN`. Intent: `CLUB_ADMIN`
+  = district admin (district-scoped); `SUPER_ADMIN` = management account (all districts). **Not
+  yet differentiated in code** — see concept gaps below.
+- **Mobile-first intent**: all new feature screens must be designed phone-first (base Tailwind
+  classes = 375px phone; `sm:`/`md:`/`lg:` enhance upward). Desktop is derived, not the default.
+
+---
 
 ## Status
 
-Done + verified end-to-end: scaffold, premium navy/gold theme, auth (register/login), roster
-import + verification (with impersonation guard), directory search (FTS + trigram + facets +
-autocomplete), business CRUD + photo uploads, business detail + member profile + "similar
-businesses" rail, and the **admin verification queue** (approve/reject at `/admin/verifications`,
-role-gated). Bootstrap the first admin with `npm run make-admin -- <email>`.
+### What's built (the spine)
+
+Fully working end-to-end: scaffold, premium navy/gold theme, auth (register/login), roster import
++ verification (auto-match + admin queue, with impersonation guard), directory search (FTS +
+trigram + industry/country facets + autocomplete), business CRUD + photo uploads, business detail
++ member profile + "similar businesses" rail, and the **admin verification queue**
+(approve/reject at `/admin/verifications`, role-gated). Bootstrap the first admin with
+`npm run make-admin -- <email>`.
 
 Storage: `backend/storage` picks **AWS S3** when its env vars are set, else writes to
-`public/uploads/` (dev only — gitignored). Uploads go through `POST /api/upload` (verified users,
-5 MB, image types).
+`public/uploads/` (dev only — gitignored). Uploads go through `POST /api/upload` (verified
+users, 5 MB, image types).
 
-Next: connect/follow between members (Phase 5); listing moderation + taxonomy admin (Phase 6
-extras); transactional email via Hostinger SMTP (not yet built); SEO metadata/sitemap; deploy to
-Railway (Phase 7 — needs DATABASE_URL, AUTH_SECRET, AWS S3 creds).
+### Concept gaps — not yet built
+
+These seven pillars from the product concept are **absent or misaligned** in the current code.
+Build them in this sequence (each layer supports the next):
+
+1. **Roles + district scoping** *(rewire, not greenfield)*
+   — `CLUB_ADMIN` and `SUPER_ADMIN` roles exist in the schema but behave identically today:
+   `requireAdmin()` in `backend/auth-helpers.ts` gates both the same way, and the verification
+   queue (`admin/verifications/page.tsx`) shows ALL districts' requests globally with no filter.
+   The `District` model, `Club` model, and `RotaryInfo.districtId` FK already exist — what's
+   missing is scoped queries (where `user.rotaryInfo.districtId = admin.districtId`) and
+   surfacing the `SUPER_ADMIN` vs `CLUB_ADMIN` distinction in every admin route.
+
+2. **Home-district selection at signup** *(rewire)*
+   — The register form has a free-text "District" input used only for roster matching. It must
+   become a real home-district picker (dropdown of `District` records) that stores a FK on
+   `RotaryInfo` and routes the new member to the correct district admin's queue.
+
+3. **Listing approval gate** *(build)*
+   — `createBusiness` in `backend/services/business.ts` never sets `status`; the schema default
+   is `ACTIVE`, so every new listing is instantly searchable. It must default to `PENDING`
+   (or `DRAFT`), be invisible in search until a district admin approves it, and the admin queue
+   must expose a listing moderation view alongside member verification.
+
+4. **Payment / membership fee** *(build — needs payment provider choice)*
+   — No billing code exists anywhere. Registration must gate entry to the verification queue
+   behind a successful payment. Choose a provider (Stripe recommended) before starting.
+
+5. **Reviews + star ratings** *(build)*
+   — No `Review`/`Rating` model in the schema; no reviews anywhere in the UI. Add the model
+   (reviewer FK → `User`, business FK → `Business`, rating 1-5, body text, `createdAt`),
+   server actions to create/read reviews (verified members only), and surface ratings in search
+   ranking and on business detail pages.
+
+6. **Geo search + sort options** *(rewire — columns exist, wiring is missing)*
+   — `Business.lat` and `Business.lng` columns exist in the schema but are never populated by
+   `createBusiness`/`updateBusiness` and never queried by `backend/search/postgres.ts`. Wire up:
+   geocode on write (a geocoding provider call when `addressLine`/`city`/`country` changes),
+   add `lat`/`lng`/`radiusKm` to `SearchParams`, implement `ST_Distance`-based filtering, and
+   expose distance/rating/recency as user-selectable sort options.
+
+7. **Management oversight dashboard** *(build)*
+   — `/admin` today is only the verification queue. The management account needs: a
+   cross-district stats overview (member counts, pending queues per district, revenue, review
+   activity), district CRUD (create district, assign/reassign district admin), and the ability
+   to override any district-level decision (approve/reject from the management view).
+
+> **Note on 4 & 6:** Payment and geocoding require external provider accounts (Stripe / a
+> geocoding API). Choose providers before starting those pillars.

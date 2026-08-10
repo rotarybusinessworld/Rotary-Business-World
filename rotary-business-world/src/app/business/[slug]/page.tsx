@@ -4,6 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/frontend/site-header";
 import { BusinessCard } from "@/frontend/search/business-card";
+import { BusinessGallery } from "@/frontend/business/business-gallery";
 import { Badge } from "@/frontend/ui/badge";
 import { Card, CardContent } from "@/frontend/ui/card";
 import { buttonVariants } from "@/frontend/ui/button";
@@ -15,7 +16,9 @@ import {
   BadgeCheck,
   Briefcase,
   Building2,
+  ChevronRight,
   Globe,
+  Images,
   Mail,
   MapPin,
   MessageCircle,
@@ -48,7 +51,8 @@ export async function generateMetadata({
   if (!business) return { title: "Business not found" };
   return {
     title: business.name,
-    description: business.description ?? `${business.name} on Rotary Business World`,
+    description:
+      business.description ?? `${business.name} on Rotary Business World`,
   };
 }
 
@@ -65,7 +69,11 @@ export default async function BusinessDetailPage({
   const isOwner = session?.user?.id === business.ownerId;
   const ownerVerified = business.owner.status === "VERIFIED";
   const location = [business.city, business.country].filter(Boolean).join(", ");
+  const address = [business.addressLine, business.city, business.country]
+    .filter(Boolean)
+    .join(", ");
 
+  // Similar businesses
   const similar = business.industryId
     ? await db.business.findMany({
         where: {
@@ -90,16 +98,29 @@ export default async function BusinessDetailPage({
     ownerVerified: b.owner.status === "VERIFIED",
   }));
 
+  // Contact pills for the action bar
   const contacts = [
     business.website && { icon: Globe, label: "Website", href: business.website },
-    business.phone && { icon: Phone, label: "Call", href: `tel:${business.phone}` },
+    business.phone && {
+      icon: Phone,
+      label: "Call",
+      href: `tel:${business.phone}`,
+    },
     business.whatsapp && {
       icon: MessageCircle,
       label: "WhatsApp",
       href: `https://wa.me/${business.whatsapp.replace(/[^0-9]/g, "")}`,
     },
-    business.email && { icon: Mail, label: "Email", href: `mailto:${business.email}` },
-    business.linkedin && { icon: Briefcase, label: "LinkedIn", href: business.linkedin },
+    business.email && {
+      icon: Mail,
+      label: "Email",
+      href: `mailto:${business.email}`,
+    },
+    business.linkedin && {
+      icon: Briefcase,
+      label: "LinkedIn",
+      href: business.linkedin,
+    },
     business.instagram && {
       icon: AtSign,
       label: "Instagram",
@@ -109,145 +130,374 @@ export default async function BusinessDetailPage({
     },
   ].filter(Boolean) as { icon: typeof Globe; label: string; href: string }[];
 
+  // Sidebar contact rows (includes address)
+  const sidebarContacts = [
+    business.website && {
+      icon: Globe,
+      label: business.website.replace(/^https?:\/\//, "").replace(/\/$/, ""),
+      href: business.website,
+    },
+    business.phone && {
+      icon: Phone,
+      label: business.phone,
+      href: `tel:${business.phone}`,
+    },
+    business.whatsapp && {
+      icon: MessageCircle,
+      label: business.whatsapp,
+      href: `https://wa.me/${business.whatsapp.replace(/[^0-9]/g, "")}`,
+    },
+    business.email && {
+      icon: Mail,
+      label: business.email,
+      href: `mailto:${business.email}`,
+    },
+    business.linkedin && {
+      icon: Briefcase,
+      label: "LinkedIn profile",
+      href: business.linkedin,
+    },
+    business.instagram && {
+      icon: AtSign,
+      label: business.instagram.replace(/^@/, "@"),
+      href: business.instagram.startsWith("http")
+        ? business.instagram
+        : `https://instagram.com/${business.instagram.replace(/^@/, "")}`,
+    },
+    address && { icon: MapPin, label: address, href: null },
+  ].filter(Boolean) as {
+    icon: typeof Globe;
+    label: string;
+    href: string | null;
+  }[];
+
+  const hasPhotos = !!(business.coverUrl || business.logoUrl || business.images.length);
+
+  const ownerName = business.owner.profile?.fullName ?? "Rotarian";
+  const ownerInitial = ownerName.charAt(0).toUpperCase();
+
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto w-full max-w-4xl px-4 py-8">
-        {/* Cover */}
-        <div className="relative mb-4 h-44 w-full overflow-hidden rounded-[var(--radius)] bg-muted sm:h-56">
-          {business.coverUrl ? (
-            <Image src={business.coverUrl} alt="" fill className="object-cover" sizes="900px" />
-          ) : (
-            <div className="h-full w-full bg-gradient-to-r from-[#eaf0fb] to-accent" />
-          )}
-        </div>
 
-        {/* Header */}
-        <div className="flex items-start gap-4">
-          <div className="-mt-12 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius)] border-4 border-card bg-muted">
-            {business.logoUrl ? (
-              <Image src={business.logoUrl} alt="" width={80} height={80} className="h-full w-full object-cover" />
+      <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-8">
+        {/* ── Breadcrumb ─────────────────────────────────────────── */}
+        <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Link href="/directory" className="transition-colors hover:text-foreground">
+            Directory
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate font-medium text-foreground">
+            {business.name}
+          </span>
+        </nav>
+
+        {/* ── Hero card ─────────────────────────────────────────── */}
+        <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-[var(--shadow-card)]">
+          {/* Cover band */}
+          <div className="relative h-40 sm:h-52 lg:h-60 bg-navy-800">
+            {business.coverUrl ? (
+              <>
+                <Image
+                  src={business.coverUrl}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="(min-width: 1024px) 960px, 100vw"
+                  priority
+                />
+                <div
+                  aria-hidden
+                  className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"
+                />
+              </>
             ) : (
-              <Building2 className="h-8 w-8 text-muted-foreground" />
+              <div
+                className="h-full w-full"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #0b1226 0%, #1a2445 50%, #26325a 100%)",
+                }}
+              >
+                <div
+                  aria-hidden
+                  className="h-full w-full"
+                  style={{
+                    background:
+                      "radial-gradient(60% 60% at 70% 40%, rgba(201,162,76,0.12), transparent 70%)",
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Edit button — glass pill, top-right of cover */}
+            {isOwner && (
+              <Link
+                href={`/dashboard/businesses/${business.id}`}
+                className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm transition-colors duration-200 hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <Pencil className="h-3 w-3" />
+                Edit listing
+              </Link>
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold">
+
+          {/* Info block */}
+          <div className="px-4 pb-5 pt-0 sm:px-6">
+            {/* Logo — overlaps the cover with negative margin */}
+            <div className="-mt-10 mb-3 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[var(--radius)] border-4 border-card bg-muted shadow-[var(--shadow-card)]">
+              {business.logoUrl ? (
+                <Image
+                  src={business.logoUrl}
+                  alt=""
+                  width={80}
+                  height={80}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Building2 className="h-8 w-8 text-muted-foreground" />
+              )}
+            </div>
+
+            {/* Name + verified */}
+            <div className="mt-3 flex items-center gap-2.5">
+              <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight sm:text-3xl">
                 {business.name}
               </h1>
               {ownerVerified && (
-                <BadgeCheck className="h-5 w-5 text-success" aria-label="Verified Rotarian" />
+                <BadgeCheck
+                  className="h-6 w-6 shrink-0 text-success"
+                  aria-label="Verified Rotarian owner"
+                />
               )}
             </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {business.industryName && <Badge>{business.industryName}</Badge>}
-              {business.categoryName && <span>{business.categoryName}</span>}
+
+            {/* Industry · Category · Location */}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              {business.industryName && (
+                <Badge variant="default">{business.industryName}</Badge>
+              )}
+              {business.categoryName && (
+                <span>{business.categoryName}</span>
+              )}
               {location && (
                 <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5" /> {location}
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  {location}
                 </span>
               )}
             </div>
           </div>
-          {isOwner && (
-            <Link
-              href={`/dashboard/businesses/${business.id}`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <Pencil className="h-4 w-4" /> Edit
-            </Link>
-          )}
         </div>
 
-        {/* Contact actions */}
+        {/* ── Contact action bar ─────────────────────────────────── */}
         {contacts.length > 0 && (
-          <div className="mt-5 flex flex-wrap gap-2">
-            {contacts.map((c) => (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {contacts.map((c, i) => (
               <a
                 key={c.label}
                 href={c.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={buttonVariants({ variant: "outline", size: "sm" })}
+                className={
+                  i === 0
+                    ? buttonVariants({ variant: "gold", size: "sm" })
+                    : buttonVariants({ variant: "outline", size: "sm" })
+                }
               >
-                <c.icon className="h-4 w-4" /> {c.label}
+                <c.icon className="h-4 w-4" />
+                {c.label}
               </a>
             ))}
           </div>
         )}
 
-        <div className="mt-8 grid gap-8 md:grid-cols-[1fr_260px]">
-          <div className="space-y-8">
+        {/* ── Owner "add photos" nudge (first-time owner prompt) ── */}
+        {isOwner && !hasPhotos && (
+          <div className="mt-4 flex items-center justify-between gap-4 rounded-[var(--radius)] border border-dashed border-rotary-gold/40 bg-[color-mix(in_srgb,var(--color-rotary-gold)_6%,white)] px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Images className="h-5 w-5 shrink-0 text-rotary-gold-dark" />
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  Make your profile shine —
+                </span>{" "}
+                add a logo, cover, and gallery.
+              </p>
+            </div>
+            <Link
+              href={`/dashboard/businesses/${business.id}`}
+              className="shrink-0 text-sm font-medium text-rotary-gold-dark hover:underline"
+            >
+              Add photos →
+            </Link>
+          </div>
+        )}
+
+        {/* ── Main content grid ──────────────────────────────────── */}
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
+
+          {/* ── LEFT: About + Gallery ─────────────────────────── */}
+          <div className="space-y-6">
+            {/* About */}
             {business.description && (
-              <section>
-                <h2 className="mb-2 font-[family-name:var(--font-display)] text-lg font-semibold">
-                  About
-                </h2>
-                <p className="whitespace-pre-line text-sm text-muted-foreground">
-                  {business.description}
-                </p>
-              </section>
+              <Card>
+                <CardContent className="p-5 sm:p-6">
+                  <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-semibold">
+                    About
+                  </h2>
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                    {business.description}
+                  </p>
+                </CardContent>
+              </Card>
             )}
 
+            {/* Gallery */}
             {business.images.length > 0 && (
-              <section>
-                <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-semibold">
-                  Gallery
-                </h2>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {business.images.map((img) => (
-                    <div key={img.id} className="relative aspect-square overflow-hidden rounded-[var(--radius)] border border-border">
-                      <Image src={img.url} alt="" fill className="object-cover" sizes="300px" />
-                    </div>
-                  ))}
-                </div>
-              </section>
+              <Card>
+                <CardContent className="p-5 sm:p-6">
+                  <h2 className="mb-4 font-[family-name:var(--font-display)] text-lg font-semibold">
+                    Gallery
+                  </h2>
+                  <BusinessGallery
+                    images={business.images.map((img) => ({
+                      id: img.id,
+                      url: img.url,
+                    }))}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Empty state for non-owner visitors with no content */}
+            {!business.description && business.images.length === 0 && (
+              <Card>
+                <CardContent className="p-5 sm:p-6">
+                  <p className="text-sm text-muted-foreground">
+                    No additional information has been added yet.
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </div>
 
-          {/* Owner card */}
-          <aside>
+          {/* ── RIGHT: Sidebar ────────────────────────────────── */}
+          <aside className="space-y-4">
+            {/* Get in touch card */}
+            {sidebarContacts.length > 0 && (
+              <Card>
+                <CardContent className="p-5">
+                  <h3 className="mb-4 font-[family-name:var(--font-display)] text-base font-semibold">
+                    Get in touch
+                  </h3>
+                  <ul className="space-y-3">
+                    {sidebarContacts.map((c) => (
+                      <li key={c.label} className="flex items-start gap-3">
+                        <c.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                        {c.href ? (
+                          <a
+                            href={c.href}
+                            target={c.href.startsWith("http") ? "_blank" : undefined}
+                            rel={c.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                            className="truncate text-sm text-foreground transition-colors hover:text-primary"
+                          >
+                            {c.label}
+                          </a>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {c.label}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Rotarian owner card */}
             <Card>
-              <CardContent>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardContent className="p-5">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                   Rotarian owner
                 </p>
                 <Link
                   href={`/member/${business.ownerId}`}
-                  className="mt-2 flex items-center gap-3 hover:opacity-90"
+                  className="group flex items-center gap-3 transition-opacity hover:opacity-90"
                 >
-                  <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-muted">
+                  {/* Avatar */}
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
                     {business.owner.profile?.photoUrl ? (
-                      <Image src={business.owner.profile.photoUrl} alt="" width={44} height={44} className="h-full w-full object-cover" />
+                      <Image
+                        src={business.owner.profile.photoUrl}
+                        alt=""
+                        width={48}
+                        height={48}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
-                      <span className="text-sm font-semibold text-muted-foreground">
-                        {(business.owner.profile?.fullName ?? "?").charAt(0)}
+                      <span className="text-base font-semibold text-muted-foreground">
+                        {ownerInitial}
                       </span>
                     )}
                   </div>
+
+                  {/* Name + club */}
                   <div className="min-w-0">
-                    <p className="truncate font-medium">
-                      {business.owner.profile?.fullName ?? "Rotarian"}
+                    <p className="truncate font-medium transition-colors group-hover:text-primary">
+                      {ownerName}
                     </p>
                     {business.owner.rotaryInfo?.club && (
                       <p className="truncate text-xs text-muted-foreground">
                         {business.owner.rotaryInfo.club.name}
                       </p>
                     )}
+                    {business.owner.rotaryInfo?.district && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        District {business.owner.rotaryInfo.district.code}
+                      </p>
+                    )}
                   </div>
+                </Link>
+
+                <Link
+                  href={`/member/${business.ownerId}`}
+                  className="mt-4 block text-xs font-medium text-primary hover:underline"
+                >
+                  View profile →
                 </Link>
               </CardContent>
             </Card>
+
+            {/* Verified trust note */}
+            {ownerVerified && (
+              <div className="flex items-start gap-3 rounded-[var(--radius)] border border-border bg-[color-mix(in_srgb,var(--color-success)_6%,white)] px-4 py-3">
+                <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  The owner is verified against the official{" "}
+                  <span className="font-medium text-foreground">Rotary roster</span>.
+                </p>
+              </div>
+            )}
           </aside>
         </div>
 
-        {/* Similar */}
+        {/* ── Similar businesses ─────────────────────────────────── */}
         {similarHits.length > 0 && (
           <section className="mt-12">
-            <h2 className="mb-4 font-[family-name:var(--font-display)] text-lg font-semibold">
-              Similar Rotarian businesses
-            </h2>
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
+                Similar Rotarian businesses
+              </h2>
+              {business.industryName && (
+                <Link
+                  href={`/directory?industry=${encodeURIComponent(business.industryName)}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  View all →
+                </Link>
+              )}
+            </div>
             <div className="grid gap-3">
               {similarHits.map((hit) => (
                 <BusinessCard key={hit.id} hit={hit} />

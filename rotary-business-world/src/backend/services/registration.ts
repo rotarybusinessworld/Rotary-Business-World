@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/backend/db";
 import { hashPassword } from "@/backend/password";
 import { verifyAgainstRoster } from "@/backend/verification";
-import { ConflictError } from "@/backend/errors";
+import { ConflictError, NotFoundError } from "@/backend/errors";
 
 /**
  * Account creation + roster verification.
@@ -18,7 +18,8 @@ export type RegisterMemberInput = {
   password: string;
   rotaryId: string;
   clubName: string;
-  districtCode: string;
+  /** FK to District.id — the picker submits this; we resolve the code for roster matching. */
+  districtId: string;
   phone: string;
   country?: string;
 };
@@ -41,11 +42,19 @@ export async function registerMember(
     });
   }
 
+  // Resolve the district record to get its roster-match code.
+  const district = await db.district.findUnique({
+    where: { id: input.districtId },
+  });
+  if (!district) {
+    throw new NotFoundError("Selected district not found — please choose again");
+  }
+
   // Decide verification status by matching the official roster.
   const outcome = await verifyAgainstRoster({
     rotaryId: input.rotaryId,
     fullName: input.fullName,
-    districtCode: input.districtCode,
+    districtCode: district.code,
   });
 
   // Guard against one roster identity being claimed by multiple verified
@@ -81,6 +90,9 @@ export async function registerMember(
         create: {
           rotaryId: input.rotaryId,
           classification: null,
+          // The picked district is the home district — set on BOTH branches so the
+          // scoping key exists even before admin approval.
+          districtId: input.districtId,
           // Only claim the roster identity when actually verified; a fuzzy
           // PENDING candidate must not consume the unique slot.
           matchedRosterId:
@@ -95,7 +107,7 @@ export async function registerMember(
                 submittedInfo: {
                   rotaryId: input.rotaryId,
                   clubName: input.clubName,
-                  districtCode: input.districtCode,
+                  districtCode: district.code,
                   score: outcome.score,
                   reason: outcome.reason,
                 },

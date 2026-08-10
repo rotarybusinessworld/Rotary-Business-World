@@ -53,6 +53,10 @@ model User {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
+  // District this user is responsible for as an admin (null for MEMBER / SUPER_ADMIN).
+  managedDistrictId String?
+  managedDistrict   District? @relation("DistrictAdmins", fields: [managedDistrictId], references: [id])
+
   profile              Profile?
   rotaryInfo           RotaryInfo?
   businesses           Business[]
@@ -61,6 +65,7 @@ model User {
   emailTokens          EmailVerificationToken[]
 
   @@index([status])
+  @@index([managedDistrictId])
 }
 
 model Profile {
@@ -123,6 +128,7 @@ model District {
   clubs        Club[]
   rotaryInfos  RotaryInfo[]
   rosterMembers RosterMember[]
+  admins       User[]          @relation("DistrictAdmins")
 
   @@index([country])
 }

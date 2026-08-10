@@ -1,22 +1,61 @@
 /**
- * Promote a user to SUPER_ADMIN (bootstrap the first admin).
+ * Promote a user to an admin role.
+ *
+ * Without --district: promote to SUPER_ADMIN (management account).
  *   npm run make-admin -- someone@example.com
+ *
+ * With --district <code>: promote to CLUB_ADMIN scoped to that district.
+ *   npm run make-admin -- someone@example.com --district 3201
  */
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
 async function main() {
-  const email = process.argv[2]?.toLowerCase();
-  if (!email) {
-    console.error("Usage: npm run make-admin -- <email>");
+  const args = process.argv.slice(2);
+  const email = args[0]?.toLowerCase();
+  if (!email || email.startsWith("--")) {
+    console.error(
+      "Usage: npm run make-admin -- <email> [--district <code>]",
+    );
     process.exit(1);
   }
+
+  // Parse optional --district <code>
+  const districtFlagIdx = args.indexOf("--district");
+  const districtCode = districtFlagIdx >= 0 ? args[districtFlagIdx + 1] : null;
+
+  let managedDistrictId: string | null = null;
+
+  if (districtCode) {
+    const district = await db.district.findUnique({
+      where: { code: districtCode },
+    });
+    if (!district) {
+      console.error(
+        `District with code "${districtCode}" not found. Run db:seed or db:import-roster first.`,
+      );
+      process.exit(1);
+    }
+    managedDistrictId = district.id;
+  }
+
   const user = await db.user.update({
     where: { email },
-    data: { role: "SUPER_ADMIN", status: "VERIFIED" },
+    data: {
+      role: districtCode ? "CLUB_ADMIN" : "SUPER_ADMIN",
+      status: "VERIFIED",
+      managedDistrictId,
+    },
   });
-  console.log(`✓ ${user.email} is now SUPER_ADMIN (verified).`);
+
+  if (districtCode) {
+    console.log(
+      `✓ ${user.email} is now CLUB_ADMIN for district ${districtCode} (verified).`,
+    );
+  } else {
+    console.log(`✓ ${user.email} is now SUPER_ADMIN (verified).`);
+  }
 }
 
 main()

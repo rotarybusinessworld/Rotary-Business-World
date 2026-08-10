@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/frontend/site-header";
 import { Logo } from "@/frontend/brand/logo";
+import { HeroVideoMobile } from "@/frontend/brand/hero-video";
 import { buttonVariants } from "@/frontend/ui/button";
 import {
   BadgeCheck,
@@ -51,29 +52,44 @@ export default function HomePage() {
               "radial-gradient(60% 55% at 50% 0%, rgba(201,162,76,0.18), transparent 70%), radial-gradient(40% 40% at 85% 20%, rgba(38,50,90,0.6), transparent 70%)",
           }}
         />
-        <div className="relative mx-auto flex min-h-[calc(100svh-68px)] max-w-4xl flex-col items-center justify-center px-4 py-14 text-center sm:py-20">
+
+        {/* ─────────────────────── Content ─────────────────────── */}
+        <div className="relative mx-auto flex min-h-[calc(100svh-68px)] max-w-4xl flex-col items-center justify-center px-4 py-12 text-center sm:py-20">
+
+          {/* Badge chip */}
           <span className="mb-6 inline-flex max-w-full animate-fade-in-up items-center gap-2 rounded-full border border-rotary-gold/30 bg-white/5 px-4 py-1.5 text-[11px] font-medium tracking-wide text-rotary-gold-light sm:text-xs">
             <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
             The trusted network for Rotarian enterprise
           </span>
-          <h1 className="animate-fade-in-up stagger-1 font-[family-name:var(--font-display)] text-[2rem] font-semibold leading-[1.1] tracking-tight sm:text-6xl sm:leading-[1.08]">
+
+          {/* Headline */}
+          <h1 className="animate-fade-in-up stagger-1 font-[family-name:var(--font-display)] text-[2.1rem] font-semibold leading-[1.08] tracking-tight sm:text-6xl sm:leading-[1.08]">
             Where Rotarians do
             <br className="hidden sm:block" />{" "}
             <span className="italic text-rotary-gold-light">business</span> with the world
           </h1>
-          <p className="mx-auto mt-6 max-w-xl animate-fade-in-up stagger-2 text-lg text-white/70">
+
+          {/* Subtitle */}
+          <p className="mx-auto mt-5 max-w-xl animate-fade-in-up stagger-2 text-base leading-relaxed text-white/70 sm:text-lg">
             A private, verified directory of Rotarian-owned businesses. Discover
             partners, suppliers and peers you can trust — across every industry
             and continent.
           </p>
 
+          {/*
+            ── Mobile video card ──────────────────────────────────────────────
+            Sits in-flow between the subtitle and the search bar on small screens.
+            Hidden on lg+; the desktop uses the absolute-positioned floating card below.
+          */}
+          <HeroVideoMobile />
+
           {/* Search */}
           <form
             action="/directory"
-            className="mx-auto mt-9 flex max-w-xl animate-fade-in-up stagger-3 items-center gap-2 rounded-full bg-white p-2 shadow-[var(--shadow-pop)]"
+            className="mx-auto mt-5 flex w-full max-w-xl animate-fade-in-up stagger-3 items-center gap-2 rounded-full bg-white p-2 shadow-[var(--shadow-pop)] lg:mt-9"
           >
             <div className="flex flex-1 items-center gap-2 pl-3">
-              <Search className="h-5 w-5 text-muted-foreground" />
+              <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
               <input
                 name="q"
                 placeholder="Search businesses, industries, cities…"
@@ -83,13 +99,14 @@ export default function HomePage() {
             </div>
             <button
               type="submit"
-              className="inline-flex h-11 items-center rounded-full bg-rotary-gold px-6 text-sm font-semibold text-secondary-foreground transition-all duration-200 ease-out hover:-translate-y-px hover:bg-rotary-gold-light"
+              className="inline-flex h-11 shrink-0 items-center rounded-full bg-rotary-gold px-5 text-sm font-semibold text-secondary-foreground transition-all duration-200 ease-out hover:-translate-y-px hover:bg-rotary-gold-light sm:px-6"
             >
               Search
             </button>
           </form>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 animate-fade-in stagger-4 text-sm text-white/55">
+          {/* Stats */}
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-7 gap-y-3 animate-fade-in stagger-4 text-sm text-white/55 sm:gap-x-8">
             {stats.map((s) => (
               <span key={s.label} className="inline-flex items-center gap-2">
                 <s.icon className="h-4 w-4 text-rotary-gold" />
@@ -99,8 +116,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Ambient brand video — a small, gold-framed accent (decorative) */}
-        <div className="relative z-10 mx-auto mb-16 w-44 animate-fade-in-up stagger-4 sm:w-52 lg:absolute lg:bottom-12 lg:right-[6%] lg:mx-0 lg:mb-0 lg:w-60">
+        {/*
+          ── Desktop floating video card ────────────────────────────────────
+          Absolute-positioned bottom-right accent. Hidden on mobile (HeroVideoMobile
+          handles the small-screen experience instead).
+        */}
+        <div className="hidden lg:block lg:absolute lg:bottom-12 lg:right-[6%] lg:z-10 lg:w-60 animate-fade-in-up stagger-4">
           {/* soft gold glow */}
           <div
             aria-hidden
@@ -129,7 +150,6 @@ export default function HomePage() {
               className="hidden aspect-square w-full bg-cover bg-center motion-reduce:block"
               style={{ backgroundImage: "url('/brand/rotary-hero-poster.jpg')" }}
             />
-            {/* inner vignette to seat the frame */}
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10"
@@ -147,25 +167,25 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="mx-auto max-w-6xl px-4 py-20">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+        <div className="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rotary-gold-dark">
             Why members join
           </p>
-          <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
+          <h2 className="mt-3 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight sm:text-3xl">
             Built for trust, designed for growth
           </h2>
         </div>
-        <div className="grid gap-6 sm:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-3">
           {features.map((f) => (
             <div
               key={f.title}
-              className="group rounded-2xl border border-border bg-card p-7 shadow-[var(--shadow-card)] transition-all duration-200 ease-out hover:-translate-y-1 hover:border-primary/30 hover:shadow-[var(--shadow-pop)]"
+              className="group rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-card)] transition-all duration-200 ease-out hover:-translate-y-1 hover:border-primary/30 hover:shadow-[var(--shadow-pop)] sm:p-7"
             >
               <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-navy text-rotary-gold-light transition-transform duration-200 ease-out group-hover:scale-105">
                 <f.icon className="h-5 w-5" />
               </div>
-              <h3 className="font-[family-name:var(--font-display)] text-xl font-semibold">
+              <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold sm:text-xl">
                 {f.title}
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -177,8 +197,8 @@ export default function HomePage() {
       </section>
 
       {/* CTA */}
-      <section className="mx-auto mb-20 max-w-6xl px-4">
-        <div className="relative overflow-hidden rounded-3xl bg-navy px-8 py-14 text-center text-white">
+      <section className="mx-auto mb-16 max-w-6xl px-4 sm:mb-20">
+        <div className="relative overflow-hidden rounded-3xl bg-navy px-6 py-12 text-center text-white sm:px-8 sm:py-14">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"
@@ -188,12 +208,12 @@ export default function HomePage() {
             }}
           />
           <div className="relative">
-            <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight sm:text-3xl lg:text-4xl">
               List your business. Grow with Rotarians.
             </h2>
-            <p className="mx-auto mt-3 max-w-xl text-white/70">
-              Join free, get verified against the Rotary roster, and put your
-              business in front of a global community of members.
+            <p className="mx-auto mt-3 max-w-xl text-sm text-white/70 sm:text-base">
+              Get verified against the Rotary roster and put your business in
+              front of a global community of members.
             </p>
             <Link
               href="/register"
