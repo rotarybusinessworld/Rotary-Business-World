@@ -3,7 +3,7 @@ import Link from "next/link";
 import Stripe from "stripe";
 import { SiteHeader } from "@/frontend/site-header";
 import { requireUser } from "@/backend/auth-helpers";
-import { markUserPaid } from "@/backend/services/payment";
+import { recordMembershipPayment } from "@/backend/services/payment";
 import { buttonVariants } from "@/frontend/ui/button";
 import { BadgeCheck } from "lucide-react";
 
@@ -44,7 +44,20 @@ export default async function PaymentSuccessPage({
     redirect("/onboarding/payment");
   }
 
-  await markUserPaid(user.id);
+  // Idempotent with the webhook: whichever runs first records the payment; the
+  // other no-ops on the unique session id.
+  await recordMembershipPayment({
+    userId: user.id,
+    source: "STRIPE",
+    amount: checkout.amount_total ?? 0,
+    currency: checkout.currency ?? "usd",
+    stripeCheckoutSessionId: checkout.id,
+    stripePaymentIntentId:
+      typeof checkout.payment_intent === "string"
+        ? checkout.payment_intent
+        : null,
+    actorId: user.id,
+  });
 
   return (
     <>

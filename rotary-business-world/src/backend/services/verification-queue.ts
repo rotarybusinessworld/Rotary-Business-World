@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/backend/db";
 import { verifyAgainstRoster } from "@/backend/verification";
 import { assertAdmin, type Actor } from "@/backend/actor";
+import { auditCreate } from "@/backend/audit";
 import { ForbiddenError, NotFoundError } from "@/backend/errors";
 
 /** Admin review queue for signups the roster match couldn't auto-verify. */
@@ -109,6 +110,13 @@ export async function approveVerification(
         reviewedAt: new Date(),
       },
     }),
+    auditCreate(db, {
+      actorId: admin.id,
+      action: "verification.approved",
+      targetType: "User",
+      targetId: request.userId,
+      metadata: { requestId, matchedRosterId },
+    }),
   ]);
 }
 
@@ -157,6 +165,13 @@ export async function rejectVerification(
         reviewedAt: new Date(),
         note: note?.trim() || null,
       },
+    }),
+    auditCreate(db, {
+      actorId: admin.id,
+      action: "verification.rejected",
+      targetType: "User",
+      targetId: request.userId,
+      metadata: { requestId, note: note?.trim() || null },
     }),
   ]);
 }

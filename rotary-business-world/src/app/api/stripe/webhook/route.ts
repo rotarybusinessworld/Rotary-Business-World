@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { markUserPaid } from "@/backend/services/payment";
+import { env } from "@/backend/env";
+import { logger } from "@/backend/logger";
+import { recordMembershipPayment } from "@/backend/services/payment";
 
 /**
  * Stripe webhook — the SOURCE OF TRUTH for paid status.
@@ -15,13 +17,10 @@ import { markUserPaid } from "@/backend/services/payment";
  * localhost:3000/api/stripe/webhook`.
  */
 export async function POST(req: Request) {
-  const secret = process.env.STRIPE_SECRET_KEY;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secret = env.STRIPE_SECRET_KEY;
+  const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
   if (!secret || !webhookSecret) {
-    return NextResponse.json(
-      { error: "Webhook not configured" },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
   }
 
   const sig = req.headers.get("stripe-signature");
@@ -42,9 +41,37 @@ export async function POST(req: Request) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.userId;
+
     if (session.payment_status === "paid" && userId) {
-      await markUserPaid(userId);
+      try {
+        const { created } = await recordMembershipPayment({
+          userId,
+          source: "STRIPE",
+          amount: session.amount_total ?? 0,
+          currency: session.currency ?? "usd",
+          stripeCheckoutSessionId: session.id,
+          stripePaymentIntentId:
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : null,
+          actorId: null, // system event
+        });
+        logger.info(
+          { userId, sessionId: session.id, created },
+          "stripe payment recorded",
+        );
+      } catch (err) {
+        // Return 500 so Stripe RETRIES. Returning 200 here (the old behaviour)
+        // meant a failed DB write silently dropped the payment forever.
+        logger.error(
+          { err, userId, sessionId: session.id },
+          "failed to record stripe payment",
+        );
+        return NextResponse.json({ error: "processing failed" }, { status: 500 });
+      }
     }
+  } else {
+    logger.debug({ type: event.type }, "unhandled stripe event");
   }
 
   return NextResponse.json({ received: true });

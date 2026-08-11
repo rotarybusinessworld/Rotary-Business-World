@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireUser } from "@/backend/auth-helpers";
-import { markUserPaid } from "@/backend/services/payment";
+import { recordMembershipPayment } from "@/backend/services/payment";
 
 /**
  * Demo-mode payment: skips Stripe and marks the current user as paid.
@@ -21,6 +21,13 @@ export async function demoCompletePayment(_fd: FormData) {
     redirect("/onboarding/payment");
   }
 
-  await markUserPaid(user.id);
+  // Mirrors the $50 Stripe line item so demo records look like real ones.
+  await recordMembershipPayment({
+    userId: user.id,
+    source: "DEMO",
+    amount: 5000,
+    currency: "usd",
+    actorId: user.id,
+  });
   redirect("/dashboard");
 }

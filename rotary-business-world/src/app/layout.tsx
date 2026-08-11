@@ -1,20 +1,40 @@
 import type { Metadata } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const inter = Inter({
+// Self-hosted variable fonts (see src/app/fonts/). We deliberately do NOT use
+// next/font/google: it downloads font files from fonts.gstatic.com at build
+// time, which fails in build environments that can't reach Google (e.g. the
+// Railway build container returned 404s and broke the build). Self-hosting
+// removes that build-time network dependency entirely.
+const inter = localFont({
   variable: "--font-inter",
-  subsets: ["latin"],
   display: "swap",
+  src: [
+    {
+      path: "./fonts/inter-latin-wght-normal.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+  ],
 });
 
 // Serif display for headings — the "expensive", editorial voice.
-const fraunces = Fraunces({
+const fraunces = localFont({
   variable: "--font-fraunces",
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  subsets: ["latin"],
   display: "swap",
+  src: [
+    {
+      path: "./fonts/fraunces-latin-wght-normal.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+    {
+      path: "./fonts/fraunces-latin-wght-italic.woff2",
+      style: "italic",
+      weight: "100 900",
+    },
+  ],
 });
 
 export const metadata: Metadata = {

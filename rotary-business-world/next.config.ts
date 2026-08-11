@@ -5,6 +5,9 @@ import type { NextConfig } from "next";
 const s3Host = process.env.NEXT_PUBLIC_S3_PUBLIC_HOSTNAME;
 
 const nextConfig: NextConfig = {
+  // Keep pino out of the bundle — it resolves worker/transport files at runtime
+  // that don't survive bundling. Loaded as a normal Node dependency instead.
+  serverExternalPackages: ["pino", "pino-pretty"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "*.s3.*.amazonaws.com" },

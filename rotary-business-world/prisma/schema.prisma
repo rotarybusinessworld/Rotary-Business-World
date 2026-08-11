@@ -72,6 +72,10 @@ model User {
   blocksMade        Block[]        @relation("BlocksMade")
   blocksReceived    Block[]        @relation("BlocksReceived")
 
+  // Payments + audit trail (see Payment / AuditLog below).
+  payments  Payment[]
+  auditLogs AuditLog[] @relation("AuditActor")
+
   @@index([status])
   @@index([managedDistrictId])
 }
@@ -331,4 +335,57 @@ model Block {
 
   @@unique([blockerId, blockedId])
   @@index([blockedId])
+}
+
+// ---------------------------------------------------------------------------
+// Payments & audit trail
+// ---------------------------------------------------------------------------
+
+enum PaymentStatus {
+  COMPLETED
+  PENDING
+  FAILED
+}
+
+enum PaymentSource {
+  STRIPE
+  DEMO
+}
+
+/// One membership payment. The real audit trail behind `User.hasPaid`.
+model Payment {
+  id                      String        @id @default(cuid())
+  userId                  String
+  user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source                  PaymentSource @default(STRIPE)
+  // Unique per Stripe checkout session — this is what makes the webhook and the
+  // success page idempotent (nulls allowed for DEMO). A duplicate delivery upserts
+  // to a no-op instead of creating a second row.
+  stripeCheckoutSessionId String?       @unique
+  stripePaymentIntentId   String?
+  amount                  Int           // minor units (cents), from session.amount_total
+  currency                String        // from session.currency
+  status                  PaymentStatus @default(COMPLETED)
+  paidAt                  DateTime      @default(now())
+  createdAt               DateTime      @default(now())
+
+  @@index([userId])
+}
+
+/// Append-only record of sensitive actions (money, verification, admin).
+/// Never updated or deleted in code. `actorId` is nullable so system events (the
+/// Stripe webhook) and history after a user is deleted both survive.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action     String // dotted verb, e.g. "payment.completed", "verification.approved"
+  targetType String? // "User" | "Payment" | "VerificationRequest"
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
 }
