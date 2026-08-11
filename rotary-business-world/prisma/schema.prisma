@@ -76,6 +76,9 @@ model User {
   payments  Payment[]
   auditLogs AuditLog[] @relation("AuditActor")
 
+  // Business reviews written by this user.
+  reviews Review[]
+
   @@index([status])
   @@index([managedDistrictId])
 }
@@ -241,7 +244,8 @@ model Business {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  images BusinessImage[]
+  images  BusinessImage[]
+  reviews Review[]
 
   // Declared so Prisma is aware of the column and never DROPs it. The column is
   // turned into a STORED generated column by a hand-edited migration; Prisma
@@ -338,6 +342,25 @@ model Block {
 }
 
 // ---------------------------------------------------------------------------
+// Reviews (verified member → business, one review per member per business)
+// ---------------------------------------------------------------------------
+
+model Review {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  reviewerId String
+  reviewer   User     @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  rating     Int      // 1–5
+  body       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([businessId, reviewerId])
+  @@index([businessId])
+}
+
+// ---------------------------------------------------------------------------
 // Payments & audit trail
 // ---------------------------------------------------------------------------
 
@@ -350,6 +373,7 @@ enum PaymentStatus {
 enum PaymentSource {
   STRIPE
   DEMO
+  RAZORPAY
 }
 
 /// One membership payment. The real audit trail behind `User.hasPaid`.
@@ -363,8 +387,11 @@ model Payment {
   // to a no-op instead of creating a second row.
   stripeCheckoutSessionId String?       @unique
   stripePaymentIntentId   String?
-  amount                  Int           // minor units (cents), from session.amount_total
-  currency                String        // from session.currency
+  // Razorpay equivalents (unique so both the verify callback and the webhook dedup correctly)
+  razorpayPaymentId       String?       @unique
+  razorpayOrderId         String?
+  amount                  Int           // minor units (paise or cents), from payment response
+  currency                String        // ISO 4217, e.g. "INR" or "usd"
   status                  PaymentStatus @default(COMPLETED)
   paidAt                  DateTime      @default(now())
   createdAt               DateTime      @default(now())

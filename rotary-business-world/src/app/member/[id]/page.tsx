@@ -19,6 +19,7 @@ import {
   Globe2,
   MapPin,
   MessageCircle,
+  Pencil,
   Phone,
 } from "lucide-react";
 
@@ -55,9 +56,12 @@ export default async function MemberProfilePage({
   if (!member) notFound();
 
   const verified = member.status === "VERIFIED";
+  const isSelf = viewer.id === member.id;
   // Only verified members can DM, and only a verified member other than self.
   const canMessage =
-    viewer.status === "VERIFIED" && viewer.id !== member.id && verified;
+    viewer.status === "VERIFIED" && !isSelf && verified;
+  // "Edit profile" affordance — only visible to the member themselves, only when verified.
+  const canEditProfile = isSelf && viewer.status === "VERIFIED";
   const club = member.rotaryInfo?.club?.name;
   const district =
     member.rotaryInfo?.district?.code ?? member.rotaryInfo?.district?.name;
@@ -188,13 +192,23 @@ export default async function MemberProfilePage({
               )}
             </div>
 
-            {/* Message CTA */}
+            {/* Message CTA / Edit profile CTA */}
             {canMessage && (
               <div className="mt-4">
                 <StartConversationButton
                   recipientId={member.id}
                   variant="primary"
                 />
+              </div>
+            )}
+            {canEditProfile && (
+              <div className="mt-4">
+                <Link
+                  href="/dashboard/profile"
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  <Pencil className="h-4 w-4" /> Edit profile
+                </Link>
               </div>
             )}
 

@@ -5,12 +5,15 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/frontend/site-header";
 import { BusinessCard } from "@/frontend/search/business-card";
 import { BusinessGallery } from "@/frontend/business/business-gallery";
+import { ReviewForm } from "@/frontend/business/review-form";
+import { ReviewList, ReviewSummary } from "@/frontend/business/review-list";
 import { StartConversationButton } from "@/frontend/messages/start-conversation-button";
 import { Badge } from "@/frontend/ui/badge";
 import { Card, CardContent } from "@/frontend/ui/card";
 import { buttonVariants } from "@/frontend/ui/button";
 import { requirePaid } from "@/backend/auth-helpers";
 import { db } from "@/backend/db";
+import * as reviewService from "@/backend/services/review";
 import type { BusinessHit } from "@/backend/search/types";
 import {
   AtSign,
@@ -71,6 +74,13 @@ export default async function BusinessDetailPage({
 
   const isOwner = viewer.id === business.ownerId;
   const ownerVerified = business.owner.status === "VERIFIED";
+  const canReview = viewer.status === "VERIFIED" && !isOwner;
+
+  // Fetch reviews and (if applicable) the viewer's existing review in parallel.
+  const [reviewsSummary, myReview] = await Promise.all([
+    reviewService.listReviewsForBusiness(business.id),
+    canReview ? reviewService.getMyReview(viewer.id, business.id) : Promise.resolve(null),
+  ]);
   const location = [business.city, business.country].filter(Boolean).join(", ");
   const address = [business.addressLine, business.city, business.country]
     .filter(Boolean)
@@ -276,6 +286,16 @@ export default async function BusinessDetailPage({
               )}
             </div>
 
+            {/* Rating summary */}
+            {reviewsSummary.count > 0 && (
+              <div className="mt-2">
+                <ReviewSummary
+                  count={reviewsSummary.count}
+                  average={reviewsSummary.average}
+                />
+              </div>
+            )}
+
             {/* Industry · Category · Location */}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {business.industryName && (
@@ -398,6 +418,31 @@ export default async function BusinessDetailPage({
                 </CardContent>
               </Card>
             )}
+
+            {/* Reviews */}
+            <Card>
+              <CardContent className="p-5 sm:p-6">
+                <h2 className="mb-4 font-[family-name:var(--font-display)] text-base font-semibold">
+                  Reviews
+                </h2>
+
+                {/* Review form — verified non-owners only */}
+                {canReview && (
+                  <div className="mb-6 rounded-[var(--radius)] border border-border bg-muted/30 p-4">
+                    <p className="mb-3 text-sm font-medium text-foreground">
+                      {myReview ? "Update your review" : "Write a review"}
+                    </p>
+                    <ReviewForm
+                      businessId={business.id}
+                      slug={business.slug}
+                      existingReview={myReview}
+                    />
+                  </div>
+                )}
+
+                <ReviewList summary={reviewsSummary} />
+              </CardContent>
+            </Card>
           </div>
 
           {/* ── RIGHT: Sidebar ────────────────────────────────── */}

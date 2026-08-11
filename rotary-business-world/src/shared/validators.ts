@@ -76,3 +76,30 @@ export const createClubSchema = z.object({
   country: z.string().max(80).optional().or(z.literal("")),
 });
 export type CreateClubInput = z.infer<typeof createClubSchema>;
+
+export const updateProfileSchema = z.object({
+  fullName: z.string().trim().min(1, "Name is required").max(120),
+  // photoUrl comes from ImageUpload — already a full URL or "".
+  photoUrl: z.string().optional().or(z.literal("")),
+  bio: z.string().max(2000).optional().or(z.literal("")),
+  phone: z.string().max(40).optional().or(z.literal("")),
+  whatsapp: z.string().max(40).optional().or(z.literal("")),
+  city: z.string().max(120).optional().or(z.literal("")),
+  country: z.string().max(120).optional().or(z.literal("")),
+  website: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+  linkedin: z.string().url("Enter a valid LinkedIn URL").optional().or(z.literal("")),
+  instagram: z.string().max(200).optional().or(z.literal("")),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+export const reviewSchema = z.object({
+  businessId: z.string().min(1, "Missing business"),
+  slug: z.string().min(1, "Missing slug"),
+  // Coerce the hidden rating input the same way discountPercent is handled.
+  rating: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().int().min(1, "Select a rating").max(5),
+  ),
+  body: z.string().max(2000).optional().or(z.literal("")),
+});
+export type ReviewInput = z.infer<typeof reviewSchema>;

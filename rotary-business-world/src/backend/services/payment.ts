@@ -23,10 +23,12 @@ import { auditCreate } from "@/backend/audit";
 export type RecordPaymentInput = {
   userId: string;
   source: PaymentSource;
-  amount: number; // minor units (cents)
+  amount: number; // minor units (paise or cents)
   currency: string;
   stripeCheckoutSessionId?: string | null;
   stripePaymentIntentId?: string | null;
+  razorpayPaymentId?: string | null;
+  razorpayOrderId?: string | null;
   /** The acting user (success/demo); null for the system webhook. */
   actorId?: string | null;
 };
@@ -41,13 +43,15 @@ export async function recordMembershipPayment(
     currency,
     stripeCheckoutSessionId = null,
     stripePaymentIntentId = null,
+    razorpayPaymentId = null,
+    razorpayOrderId = null,
     actorId = null,
   } = input;
 
   return db.$transaction(async (tx) => {
-    // skipDuplicates makes this race-safe against concurrent webhook deliveries:
-    // the second insert conflicts on the unique session id and is skipped (count 0)
-    // instead of throwing and aborting the transaction. count 1 ⇒ we created it.
+    // skipDuplicates makes this race-safe against concurrent deliveries:
+    // the second insert conflicts on the unique id and is skipped (count 0)
+    // instead of throwing. count 1 ⇒ we created it.
     const res = await tx.payment.createMany({
       data: [
         {
@@ -57,6 +61,8 @@ export async function recordMembershipPayment(
           currency,
           stripeCheckoutSessionId,
           stripePaymentIntentId,
+          razorpayPaymentId,
+          razorpayOrderId,
         },
       ],
       skipDuplicates: true,
@@ -73,7 +79,7 @@ export async function recordMembershipPayment(
         action: "payment.completed",
         targetType: "User",
         targetId: userId,
-        metadata: { source, amount, currency, stripeCheckoutSessionId },
+        metadata: { source, amount, currency, stripeCheckoutSessionId, razorpayPaymentId },
       });
     }
 

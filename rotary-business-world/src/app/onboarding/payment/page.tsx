@@ -57,6 +57,13 @@ export default async function PaymentPage() {
   if (record?.hasPaid) redirect("/dashboard");
 
   const hasStripe = !!process.env.STRIPE_SECRET_KEY;
+  const hasRazorpay = !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
+
+  // Razorpay takes priority when both are configured
+  const amountPaise = parseInt(process.env.RAZORPAY_AMOUNT_PAISE ?? "399900", 10);
+  const priceDisplay = hasRazorpay
+    ? { symbol: "₹", integer: Math.floor(amountPaise / 100).toLocaleString("en-IN"), decimals: null, period: "year", provider: "Razorpay" }
+    : { symbol: "$", integer: "50", decimals: null, period: "year", provider: hasStripe ? "Stripe" : null };
 
   return (
     <>
@@ -184,13 +191,13 @@ export default async function PaymentPage() {
 
                 <div className="mt-5 flex items-baseline gap-1.5">
                   <span className="font-[family-name:var(--font-display)] text-2xl font-medium text-white/60">
-                    $
+                    {priceDisplay.symbol}
                   </span>
                   <span className="font-[family-name:var(--font-display)] text-5xl font-semibold leading-none tracking-tight">
-                    50
+                    {priceDisplay.integer}
                   </span>
                   <span className="text-sm font-medium text-white/45">
-                    / year
+                    / {priceDisplay.period}
                   </span>
                 </div>
                 <p className="mt-2 text-[13px] text-white/55">
@@ -216,14 +223,14 @@ export default async function PaymentPage() {
                 </ul>
 
                 {/* CTA */}
-                <PaymentClient hasStripe={hasStripe} />
+                <PaymentClient hasStripe={hasStripe} hasRazorpay={hasRazorpay} />
 
                 {/* Trust footer */}
                 <div className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-white/40">
-                  {hasStripe ? (
+                  {priceDisplay.provider ? (
                     <>
                       <Lock className="h-3 w-3" />
-                      Secured by Stripe · 256-bit SSL encryption
+                      Secured by {priceDisplay.provider} · 256-bit SSL encryption
                     </>
                   ) : (
                     <>

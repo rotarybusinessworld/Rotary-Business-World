@@ -150,7 +150,7 @@ export default function HomePage() {
             Why members join
           </p>
           <h2 className="mt-3 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight sm:text-3xl">
-            Built for trust, designed for growth
+            Build friendship,trust and designed for growth
           </h2>
         </div>
         <div className="grid gap-5 sm:grid-cols-3">

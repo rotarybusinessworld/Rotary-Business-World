@@ -58,12 +58,20 @@ export default async function DashboardPage() {
           </div>
 
           {verified && (
-            <Link
-              href="/dashboard/businesses/new"
-              className={buttonVariants({ variant: "primary" })}
-            >
-              <Plus className="h-4 w-4" /> Add business
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard/profile"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                <Settings className="h-4 w-4" /> Edit profile
+              </Link>
+              <Link
+                href="/dashboard/businesses/new"
+                className={buttonVariants({ variant: "primary" })}
+              >
+                <Plus className="h-4 w-4" /> Add business
+              </Link>
+            </div>
           )}
         </div>
 
