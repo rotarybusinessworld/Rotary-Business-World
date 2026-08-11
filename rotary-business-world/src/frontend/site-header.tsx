@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { auth, signOut } from "@/backend/auth";
+import { db } from "@/backend/db";
 import { Logo } from "@/frontend/brand/logo";
 import { MobileNav } from "@/frontend/mobile-nav";
+import { ProfileMenu } from "@/frontend/profile-menu";
 import * as messaging from "@/backend/messaging";
 import { LayoutDashboard, MessageCircle, Search, ShieldCheck } from "lucide-react";
 
@@ -12,10 +14,19 @@ export async function SiteHeader() {
   const session = await auth();
   const user = session?.user;
   const isAdmin = user?.role === "SUPER_ADMIN" || user?.role === "CLUB_ADMIN";
-  const canMessage = user?.status === "VERIFIED";
+  const isVerified = user?.status === "VERIFIED";
+  const canMessage = isVerified;
   const unread = canMessage ? await messaging.countUnread(user) : 0;
-  const userInitial =
-    (user?.name ?? user?.email ?? "?").charAt(0).toUpperCase();
+
+  // Fetch profile photo — not on the JWT session, must come from DB
+  const profile = user
+    ? await db.profile.findUnique({
+        where: { userId: user.id },
+        select: { photoUrl: true },
+      })
+    : null;
+  const photoUrl = profile?.photoUrl ?? null;
+  const displayName = user?.name ?? user?.email ?? "";
 
   async function signOutAction() {
     "use server";
@@ -26,7 +37,7 @@ export async function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-navy/95 backdrop-blur supports-[backdrop-filter]:bg-navy/80">
       <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
 
-        {/* Logo — full wordmark always */}
+        {/* Logo */}
         <Link
           href="/"
           aria-label="My Rotary Business World home"
@@ -69,22 +80,15 @@ export async function SiteHeader() {
         {/* Desktop auth area */}
         <div className="hidden items-center gap-2 md:flex">
           {user ? (
-            <>
-              <div
-                aria-hidden
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rotary-gold/15 text-[13px] font-semibold text-rotary-gold-light ring-1 ring-rotary-gold/25"
-              >
-                {userInitial}
-              </div>
-              <form action={signOutAction}>
-                <button
-                  type="submit"
-                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-white/50 transition-colors duration-150 hover:bg-white/[0.07] hover:text-white"
-                >
-                  Sign out
-                </button>
-              </form>
-            </>
+            <ProfileMenu
+              userId={user.id}
+              name={displayName}
+              email={user.email ?? ""}
+              photoUrl={photoUrl}
+              isAdmin={isAdmin}
+              isVerified={isVerified}
+              signOutAction={signOutAction}
+            />
           ) : (
             <>
               <Link
@@ -103,23 +107,18 @@ export async function SiteHeader() {
           )}
         </div>
 
-        {/* Mobile right side: user initial chip (if authed) + hamburger */}
+        {/* Mobile right side: avatar-trigger (opens nav when authed) or hamburger */}
         <div className="flex items-center gap-2 md:hidden">
-          {user && (
-            <div
-              aria-hidden
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rotary-gold/20 text-[13px] font-bold text-rotary-gold-light ring-1 ring-rotary-gold/30"
-            >
-              {userInitial}
-            </div>
-          )}
           <MobileNav
             isAuthed={!!user}
             isAdmin={isAdmin}
+            isVerified={isVerified}
             canMessage={canMessage}
             unread={unread}
-            userInitial={user ? userInitial : undefined}
-            userName={user?.name ?? user?.email ?? undefined}
+            userId={user?.id}
+            userInitial={user ? (displayName).charAt(0).toUpperCase() : undefined}
+            userName={displayName || undefined}
+            photoUrl={photoUrl}
             signOutAction={signOutAction}
           />
         </div>

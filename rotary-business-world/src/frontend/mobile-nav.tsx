@@ -8,25 +8,34 @@ import {
   Menu,
   MessageCircle,
   Search,
+  Settings,
   ShieldCheck,
+  UserRound,
   X,
 } from "lucide-react";
+import { Avatar } from "@/frontend/ui/avatar";
 
 export function MobileNav({
   isAuthed,
   isAdmin,
+  isVerified = false,
   canMessage = false,
   unread = 0,
+  userId,
   userInitial,
   userName,
+  photoUrl,
   signOutAction,
 }: {
   isAuthed: boolean;
   isAdmin: boolean;
+  isVerified?: boolean;
   canMessage?: boolean;
   unread?: number;
+  userId?: string;
   userInitial?: string;
   userName?: string;
+  photoUrl?: string | null;
   signOutAction: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -34,20 +43,28 @@ export function MobileNav({
 
   return (
     <div className="md:hidden">
-      {/* Hamburger pill */}
+      {/* Trigger — avatar when signed in, hamburger when signed out */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Close menu" : "Open menu"}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-white/20 text-white/80 transition-all duration-150 hover:bg-white/[0.09] hover:ring-white/30 hover:text-white active:scale-95"
+        className={
+          isAuthed
+            ? "flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-rotary-gold/30 transition-all duration-150 hover:ring-rotary-gold/60 active:scale-95"
+            : "inline-flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-white/20 text-white/80 transition-all duration-150 hover:bg-white/[0.09] hover:ring-white/30 hover:text-white active:scale-95"
+        }
       >
-        <span
-          className="transition-all duration-200"
-          style={{ transform: open ? "rotate(90deg)" : "none" }}
-        >
-          {open ? <X className="h-[18px] w-[18px]" /> : <Menu className="h-[18px] w-[18px]" />}
-        </span>
+        {isAuthed ? (
+          <Avatar name={userName || userInitial || "?"} photoUrl={photoUrl} size={36} />
+        ) : (
+          <span
+            className="transition-all duration-200"
+            style={{ transform: open ? "rotate(90deg)" : "none" }}
+          >
+            {open ? <X className="h-[18px] w-[18px]" /> : <Menu className="h-[18px] w-[18px]" />}
+          </span>
+        )}
       </button>
 
       {open && (
@@ -70,10 +87,14 @@ export function MobileNav({
             <div className="px-4 pb-6 pt-5">
 
               {/* User identity when signed in */}
-              {isAuthed && userInitial && (
+              {isAuthed && (
                 <div className="mb-5 flex items-center gap-3.5 rounded-xl border border-white/[0.09] bg-white/[0.04] px-4 py-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rotary-gold/20 text-[15px] font-bold text-rotary-gold-light ring-1 ring-rotary-gold/30">
-                    {userInitial}
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-rotary-gold/25">
+                    <Avatar
+                      name={userName || userInitial || "?"}
+                      photoUrl={photoUrl}
+                      size={40}
+                    />
                   </div>
                   <div className="min-w-0">
                     {userName && (
@@ -101,6 +122,28 @@ export function MobileNav({
                   <Search className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
                   Directory
                 </Link>
+
+                {isAuthed && userId && (
+                  <Link
+                    href={`/member/${userId}`}
+                    onClick={close}
+                    className="group flex min-h-[48px] items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
+                  >
+                    <UserRound className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
+                    View profile
+                  </Link>
+                )}
+
+                {isVerified && (
+                  <Link
+                    href="/dashboard/profile"
+                    onClick={close}
+                    className="group flex min-h-[48px] items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
+                  >
+                    <Settings className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
+                    Edit profile
+                  </Link>
+                )}
 
                 {isAuthed && (
                   <Link
