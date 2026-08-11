@@ -54,7 +54,7 @@ export async function generateMetadata({
   return {
     title: business.name,
     description:
-      business.description ?? `${business.name} on Rotary Business World`,
+      business.description ?? `${business.name} on My Rotary Business World`,
   };
 }
 

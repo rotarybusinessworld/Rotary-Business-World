@@ -29,7 +29,7 @@ export async function SiteHeader() {
         {/* Logo — full wordmark always */}
         <Link
           href="/"
-          aria-label="Rotary Business World home"
+          aria-label="My Rotary Business World home"
           className="shrink-0 min-w-0"
         >
           <Logo tone="light" size={32} />

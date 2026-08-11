@@ -20,12 +20,12 @@ export default function AuthLayout({
         <Link
           href="/"
           className="mx-auto mb-6 block w-fit"
-          aria-label="Rotary Business World home"
+          aria-label="My Rotary Business World home"
         >
           <span className="relative block h-16 w-16 animate-scale-in overflow-hidden rounded-2xl ring-1 ring-rotary-gold/25 shadow-[0_10px_30px_-10px_rgba(201,162,76,0.5)]">
             <Image
               src="/brand/rbw-mark.jpg"
-              alt="Rotary Business World"
+              alt="My Rotary Business World"
               fill
               sizes="64px"
               className="object-cover"

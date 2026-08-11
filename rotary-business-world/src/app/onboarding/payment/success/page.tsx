@@ -74,7 +74,7 @@ export default async function PaymentSuccessPage({
             Payment confirmed
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-            Welcome to RBW
+            Welcome to My Rotary Business World
           </h1>
           <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
             Your membership is now active. Explore the directory, connect with

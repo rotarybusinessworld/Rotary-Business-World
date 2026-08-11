@@ -75,7 +75,7 @@ export function LoginForm({ next }: { next: string }) {
 
         <div className="mt-6 border-t border-border pt-5 text-center">
           <p className="text-sm text-muted-foreground">
-            New to Rotary Business World?{" "}
+            New to My Rotary Business World?{" "}
             <Link
               href="/register"
               className="font-medium text-primary hover:underline"

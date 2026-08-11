@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { getAdminScope, requireSuperAdmin } from "@/backend/auth-helpers";
 import * as queue from "@/backend/services/verification-queue";
 import * as adminMgmt from "@/backend/services/admin-management";
-import { createDistrictAdminSchema } from "@/shared/validators";
+import {
+  createDistrictAdminSchema,
+  createDistrictSchema,
+  createClubSchema,
+} from "@/shared/validators";
 import { isAppError } from "@/backend/errors";
 
 /**
@@ -94,6 +98,68 @@ export async function revokeDistrictAdminAction(
   }
 
   revalidatePath("/admin/districts");
+}
+
+// ---------------------------------------------------------------------------
+// District + Club creation (SUPER_ADMIN only)
+// ---------------------------------------------------------------------------
+
+export type DistrictFormState = {
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+  ok?: boolean;
+};
+
+/** Create a new district record. */
+export async function createDistrictAction(
+  _prev: DistrictFormState,
+  formData: FormData,
+): Promise<DistrictFormState> {
+  const user = await requireSuperAdmin();
+
+  const parsed = createDistrictSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  try {
+    await adminMgmt.createDistrict(user, parsed.data);
+  } catch (err) {
+    if (isAppError(err)) return { error: err.message, fieldErrors: err.fieldErrors };
+    throw err;
+  }
+
+  revalidatePath("/admin/districts");
+  return { ok: true };
+}
+
+export type ClubFormState = {
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+  ok?: boolean;
+};
+
+/** Create a new club inside an existing district. */
+export async function createClubAction(
+  _prev: ClubFormState,
+  formData: FormData,
+): Promise<ClubFormState> {
+  const user = await requireSuperAdmin();
+
+  const parsed = createClubSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  try {
+    await adminMgmt.createClub(user, parsed.data);
+  } catch (err) {
+    if (isAppError(err)) return { error: err.message, fieldErrors: err.fieldErrors };
+    throw err;
+  }
+
+  revalidatePath("/admin/districts");
+  return { ok: true };
 }
 
 /** Move a district admin to another district. */

@@ -19,15 +19,18 @@ export default async function NewBusinessPage() {
       <main className="mx-auto w-full max-w-3xl px-4 py-8">
         <Link
           href="/dashboard"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
+          className="mb-5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
         >
           <ChevronLeft className="h-4 w-4" /> Back to dashboard
         </Link>
-        <h1 className="mb-6 font-[family-name:var(--font-display)] text-2xl font-bold">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Your business
+        </p>
+        <h1 className="mb-6 font-[family-name:var(--font-display)] text-2xl font-bold sm:text-3xl">
           Add a business
         </h1>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6 sm:p-8">
             <BusinessForm
               action={createBusiness}
               taxonomy={taxonomy}

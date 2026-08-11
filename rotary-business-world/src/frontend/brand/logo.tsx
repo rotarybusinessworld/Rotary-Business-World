@@ -21,7 +21,7 @@ export function Logo({
       >
         <Image
           src="/brand/rbw-mark.jpg"
-          alt="Rotary Business World"
+          alt="My Rotary Business World"
           fill
           sizes="48px"
           className="object-cover"
@@ -36,7 +36,7 @@ export function Logo({
               tone === "light" ? "text-white" : "text-foreground",
             )}
           >
-            Rotary Business World
+            My Rotary Business World
           </span>
           <span
             className={cn(

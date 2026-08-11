@@ -61,3 +61,18 @@ export const createDistrictAdminSchema = z.object({
   districtId: z.string().min(1, "Select a district"),
 });
 export type CreateDistrictAdminInput = z.infer<typeof createDistrictAdminSchema>;
+
+export const createDistrictSchema = z.object({
+  code: z.string().min(1, "District code is required").max(20),
+  name: z.string().max(160).optional().or(z.literal("")),
+  country: z.string().max(80).optional().or(z.literal("")),
+});
+export type CreateDistrictInput = z.infer<typeof createDistrictSchema>;
+
+export const createClubSchema = z.object({
+  name: z.string().min(2, "Club name is required").max(160),
+  districtId: z.string().min(1, "Select a district"),
+  city: z.string().max(120).optional().or(z.literal("")),
+  country: z.string().max(80).optional().or(z.literal("")),
+});
+export type CreateClubInput = z.infer<typeof createClubSchema>;

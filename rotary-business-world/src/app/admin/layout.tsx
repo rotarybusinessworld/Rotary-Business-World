@@ -30,7 +30,7 @@ export default async function AdminLayout({
                 href="/admin/districts"
                 className="rounded-full px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                District admins
+                Districts &amp; Clubs
               </Link>
             )}
           </nav>

@@ -206,7 +206,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row">
           <Logo tone="light" />
           <p className="text-sm">
-            © {new Date().getFullYear()} Rotary Business World. All rights reserved.
+            © {new Date().getFullYear()} My Rotary Business World. All rights reserved.
           </p>
         </div>
       </footer>

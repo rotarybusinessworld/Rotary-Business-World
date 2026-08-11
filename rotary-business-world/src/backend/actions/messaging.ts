@@ -61,7 +61,7 @@ export async function sendMessageAction(
 
   // Refresh the inbox (ordering + unread badge). The thread itself updates
   // client-side from the returned message, so it doesn't wait on revalidation.
-  revalidatePath("/messages");
+  revalidatePath("/messages", "layout");
   return { message };
 }
 
@@ -74,5 +74,5 @@ export async function markReadAction(conversationId: string): Promise<void> {
     if (isAppError(err)) return; // nothing to surface; read-marking is best-effort
     throw err;
   }
-  revalidatePath("/messages");
+  revalidatePath("/messages", "layout");
 }

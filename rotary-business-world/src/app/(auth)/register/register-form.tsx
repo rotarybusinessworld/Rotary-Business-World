@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { registerAction, type FormState } from "@/backend/actions/auth";
 import { Button } from "@/frontend/ui/button";
@@ -15,6 +15,30 @@ type District = {
   name: string | null;
   country: string | null;
 };
+
+type Club = {
+  id: string;
+  name: string;
+  districtId: string;
+};
+
+// Comprehensive country list for the dropdown.
+const COUNTRIES = [
+  "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria",
+  "Bangladesh", "Belgium", "Bolivia", "Brazil", "Canada", "Chile", "China",
+  "Colombia", "Costa Rica", "Croatia", "Czech Republic", "Denmark", "Ecuador",
+  "Egypt", "El Salvador", "Ethiopia", "Finland", "France", "Germany", "Ghana",
+  "Greece", "Guatemala", "Honduras", "Hong Kong", "Hungary", "India",
+  "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica",
+  "Japan", "Jordan", "Kenya", "South Korea", "Kuwait", "Lebanon", "Malaysia",
+  "Mexico", "Morocco", "Myanmar", "Nepal", "Netherlands", "New Zealand",
+  "Nigeria", "Norway", "Pakistan", "Panama", "Peru", "Philippines", "Poland",
+  "Portugal", "Qatar", "Romania", "Russia", "Saudi Arabia", "Senegal",
+  "Singapore", "South Africa", "Spain", "Sri Lanka", "Sweden", "Switzerland",
+  "Taiwan", "Tanzania", "Thailand", "Turkey", "Uganda", "Ukraine",
+  "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
+  "Venezuela", "Vietnam", "Zimbabwe",
+];
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -31,8 +55,17 @@ function SubmitButton() {
   );
 }
 
-export function RegisterForm({ districts }: { districts: District[] }) {
+export function RegisterForm({
+  districts,
+  clubs,
+}: {
+  districts: District[];
+  clubs: Club[];
+}) {
   const [state, action] = useActionState<FormState, FormData>(registerAction, {});
+  const [selectedDistrictId, setSelectedDistrictId] = useState("");
+
+  const districtClubs = clubs.filter((c) => c.districtId === selectedDistrictId);
 
   return (
     <Card>
@@ -94,16 +127,30 @@ export function RegisterForm({ districts }: { districts: District[] }) {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-              />
-              <FieldError messages={state.fieldErrors?.password} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                />
+                <FieldError messages={state.fieldErrors?.password} />
+              </div>
+              <div>
+                <Label htmlFor="country">Country</Label>
+                <Select id="country" name="country" defaultValue="">
+                  <option value="">Select a country…</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </Select>
+                <FieldError messages={state.fieldErrors?.country} />
+              </div>
             </div>
           </div>
 
@@ -126,6 +173,7 @@ export function RegisterForm({ districts }: { districts: District[] }) {
                   name="districtId"
                   required
                   defaultValue=""
+                  onChange={(e) => setSelectedDistrictId(e.target.value)}
                 >
                   <option value="" disabled>
                     Select a district…
@@ -142,21 +190,33 @@ export function RegisterForm({ districts }: { districts: District[] }) {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="clubName">Rotary club</Label>
-                <Input id="clubName" name="clubName" required />
-                <FieldError messages={state.fieldErrors?.clubName} />
-              </div>
-              <div>
-                <Label htmlFor="country">Country</Label>
+            <div>
+              <Label htmlFor="clubName">Rotary club</Label>
+              {districtClubs.length > 0 ? (
+                <Select id="clubName" name="clubName" required defaultValue="">
+                  <option value="" disabled>
+                    Select your club…
+                  </option>
+                  {districtClubs.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
                 <Input
-                  id="country"
-                  name="country"
-                  autoComplete="country-name"
+                  id="clubName"
+                  name="clubName"
+                  required
+                  placeholder={
+                    selectedDistrictId
+                      ? "Enter your club name"
+                      : "Select a district first"
+                  }
+                  disabled={!selectedDistrictId}
                 />
-                <FieldError messages={state.fieldErrors?.country} />
-              </div>
+              )}
+              <FieldError messages={state.fieldErrors?.clubName} />
             </div>
           </div>
 

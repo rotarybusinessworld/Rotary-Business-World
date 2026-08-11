@@ -122,6 +122,98 @@ export async function createDistrictAdmin(
   return { id: created.id };
 }
 
+// ---------------------------------------------------------------------------
+// District + Club CRUD (SUPER_ADMIN only)
+// ---------------------------------------------------------------------------
+
+/** Create a new district. Code must be unique (natural Rotary key, e.g. "3201"). */
+export async function createDistrict(
+  actor: Actor,
+  input: { code: string; name?: string; country?: string },
+): Promise<{ id: string }> {
+  const admin = assertSuperAdmin(actor);
+  const code = input.code.trim().toUpperCase();
+
+  const existing = await db.district.findUnique({ where: { code } });
+  if (existing) {
+    throw new ConflictError(`District ${code} already exists`, {
+      code: [`District ${code} already exists`],
+    });
+  }
+
+  const district = await db.$transaction(async (tx) => {
+    const d = await tx.district.create({
+      data: {
+        code,
+        name: input.name?.trim() || null,
+        country: input.country?.trim() || null,
+      },
+      select: { id: true, code: true },
+    });
+    await auditCreate(tx, {
+      actorId: admin.id,
+      action: "admin.district_created",
+      targetType: "District",
+      targetId: d.id,
+      metadata: { code, name: input.name, country: input.country },
+    });
+    return d;
+  });
+
+  return { id: district.id };
+}
+
+/** Create a new club inside an existing district. */
+export async function createClub(
+  actor: Actor,
+  input: { name: string; districtId: string; city?: string; country?: string },
+): Promise<{ id: string }> {
+  const admin = assertSuperAdmin(actor);
+
+  const district = await db.district.findUnique({
+    where: { id: input.districtId },
+    select: { id: true, code: true },
+  });
+  if (!district) throw new NotFoundError("District not found");
+
+  const existing = await db.club.findFirst({
+    where: { name: input.name.trim(), districtId: district.id },
+  });
+  if (existing) {
+    throw new ConflictError("A club with this name already exists in this district", {
+      name: ["A club with this name already exists in this district"],
+    });
+  }
+
+  const club = await db.$transaction(async (tx) => {
+    const c = await tx.club.create({
+      data: {
+        name: input.name.trim(),
+        districtId: district.id,
+        city: input.city?.trim() || null,
+        country: input.country?.trim() || null,
+      },
+      select: { id: true },
+    });
+    await auditCreate(tx, {
+      actorId: admin.id,
+      action: "admin.club_created",
+      targetType: "Club",
+      targetId: c.id,
+      metadata: {
+        name: input.name,
+        districtId: district.id,
+        districtCode: district.code,
+        city: input.city,
+        country: input.country,
+      },
+    });
+    return c;
+  });
+
+  return { id: club.id };
+}
+
 /** Demote a district admin back to a plain member and unassign their district. */
 export async function revokeDistrictAdmin(
   actor: Actor,

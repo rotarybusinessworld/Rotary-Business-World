@@ -39,8 +39,8 @@ const fraunces = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "Rotary Business World — the Rotarian business directory",
-    template: "%s · Rotary Business World",
+    default: "My Rotary Business World — the Rotarian business directory",
+    template: "%s · My Rotary Business World",
   },
   description:
     "Discover and connect with verified Rotarian-owned businesses around the world. Search by industry, location and club.",

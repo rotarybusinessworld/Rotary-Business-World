@@ -87,7 +87,7 @@ export function MessageThread({
 
   return (
     <>
-      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-5">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-5">
       {messages.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
           No messages yet. Say hello 👋
@@ -104,15 +104,15 @@ export function MessageThread({
                 className={cn(
                   "max-w-[78%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm",
                   mine
-                    ? "rounded-br-sm bg-rotary-gold text-secondary-foreground"
-                    : "rounded-bl-sm border border-border bg-card text-foreground",
+                    ? "rounded-br-sm bg-primary text-primary-foreground"
+                    : "rounded-bl-sm bg-muted text-foreground",
                 )}
               >
                 <p className="whitespace-pre-wrap break-words">{m.body}</p>
                 <p
                   className={cn(
                     "mt-1 text-[10px]",
-                    mine ? "text-secondary-foreground/60" : "text-muted-foreground",
+                    mine ? "text-primary-foreground/60" : "text-muted-foreground",
                   )}
                 >
                   {formatTime(m.createdAt)}

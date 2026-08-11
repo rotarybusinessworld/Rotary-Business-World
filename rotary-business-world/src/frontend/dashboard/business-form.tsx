@@ -4,10 +4,9 @@ import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { BusinessFormState } from "@/backend/actions/business";
 import { Button } from "@/frontend/ui/button";
-import { Input, Label, Textarea } from "@/frontend/ui/input";
+import { Input, Label, Select, Textarea } from "@/frontend/ui/input";
 import { FieldError, FormError } from "@/frontend/ui/field-error";
 import { ImageUpload, GalleryUpload } from "@/frontend/dashboard/image-upload";
-import { cn } from "@/shared/utils";
 
 type Taxonomy = {
   industries: { id: string; name: string }[];
@@ -38,14 +37,11 @@ export type BusinessDefaults = {
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" size="lg" disabled={pending}>
-      {pending ? "Saving…" : label}
+    <Button type="submit" size="lg" loading={pending} loadingText="Saving…">
+      {label}
     </Button>
   );
 }
-
-const selectClass =
-  "flex h-10 w-full rounded-[var(--radius)] border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function BusinessForm({
   action,
@@ -73,20 +69,20 @@ export function BusinessForm({
   );
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={formAction} className="space-y-5">
       <FormError message={state.error} />
 
-      {/* ── Photos ───────────────────────────────────────────── */}
-      <div className="rounded-[var(--radius)] border border-border p-5">
-        <h3 className="font-[family-name:var(--font-display)] text-base font-semibold">
-          Photos
-        </h3>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          A great cover + logo makes your listing stand out across the directory.
+      {/* ── Photos & branding ───────────────────────────────────── */}
+      <div className="space-y-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Photos &amp; branding
+        </p>
+        <p className="text-sm text-muted-foreground">
+          A great cover and logo make your listing stand out across the directory.
         </p>
 
-        {/* Logo + Cover row */}
-        <div className="mt-5 flex flex-wrap gap-6">
+        {/* Logo + Cover side by side */}
+        <div className="flex flex-wrap gap-6">
           <div>
             <Label>Logo</Label>
             <ImageUpload
@@ -109,7 +105,7 @@ export function BusinessForm({
         </div>
 
         {/* Gallery */}
-        <div className="mt-5">
+        <div>
           <Label>
             Gallery{" "}
             <span className="font-normal text-muted-foreground">(up to 12)</span>
@@ -120,118 +116,167 @@ export function BusinessForm({
         </div>
       </div>
 
-      {/* Core */}
-      <div>
-        <Label htmlFor="name">Business name</Label>
-        <Input id="name" name="name" defaultValue={defaults.name} required />
-        <FieldError messages={state.fieldErrors?.name} />
-      </div>
-
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea id="description" name="description" defaultValue={defaults.description ?? ""} rows={4} />
-        <FieldError messages={state.fieldErrors?.description} />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="industryId">Industry</Label>
-          <select
-            id="industryId"
-            name="industryId"
-            className={selectClass}
-            value={industryId}
-            onChange={(e) => setIndustryId(e.target.value)}
-          >
-            <option value="">Select industry…</option>
-            {taxonomy.industries.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label htmlFor="categoryId">Category</Label>
-          <select
-            id="categoryId"
-            name="categoryId"
-            className={cn(selectClass, !industryId && "opacity-60")}
-            defaultValue={defaults.categoryId ?? ""}
-            disabled={!industryId}
-          >
-            <option value="">Select category…</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Contact */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="website">Website</Label>
-          <Input id="website" name="website" defaultValue={defaults.website ?? ""} placeholder="https://" />
-          <FieldError messages={state.fieldErrors?.website} />
-        </div>
-        <div>
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" defaultValue={defaults.email ?? ""} />
-          <FieldError messages={state.fieldErrors?.email} />
-        </div>
-        <div>
-          <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" name="phone" defaultValue={defaults.phone ?? ""} />
-        </div>
-        <div>
-          <Label htmlFor="whatsapp">WhatsApp</Label>
-          <Input id="whatsapp" name="whatsapp" defaultValue={defaults.whatsapp ?? ""} />
-        </div>
-        <div>
-          <Label htmlFor="linkedin">LinkedIn</Label>
-          <Input id="linkedin" name="linkedin" defaultValue={defaults.linkedin ?? ""} placeholder="https://" />
-          <FieldError messages={state.fieldErrors?.linkedin} />
-        </div>
-        <div>
-          <Label htmlFor="instagram">Instagram</Label>
-          <Input id="instagram" name="instagram" defaultValue={defaults.instagram ?? ""} />
-        </div>
-      </div>
-
-      {/* Location */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="sm:col-span-3">
-          <Label htmlFor="addressLine">Address</Label>
-          <Input id="addressLine" name="addressLine" defaultValue={defaults.addressLine ?? ""} />
-        </div>
-        <div>
-          <Label htmlFor="city">City</Label>
-          <Input id="city" name="city" defaultValue={defaults.city ?? ""} />
-        </div>
-        <div>
-          <Label htmlFor="country">Country</Label>
-          <Input id="country" name="country" defaultValue={defaults.country ?? ""} />
-        </div>
-      </div>
-
-      {/* ── Rotarian discount ────────────────────────────────── */}
-      <div className="rounded-[var(--radius)] border border-border p-5">
-        <h3 className="font-[family-name:var(--font-display)] text-base font-semibold">
-          Rotarian discount
-        </h3>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Show fellow Rotarians the exclusive discount you offer them.
+      {/* ── Business details ────────────────────────────────────── */}
+      <div className="space-y-4 border-t border-border pt-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Business details
         </p>
-        <div className="mt-5 grid gap-4 sm:grid-cols-[140px_1fr]">
+
+        <div>
+          <Label htmlFor="name">Business name</Label>
+          <Input id="name" name="name" defaultValue={defaults.name} required />
+          <FieldError messages={state.fieldErrors?.name} />
+        </div>
+
+        <div>
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            name="description"
+            defaultValue={defaults.description ?? ""}
+            rows={4}
+          />
+          <FieldError messages={state.fieldErrors?.description} />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="industryId">Industry</Label>
+            <Select
+              id="industryId"
+              name="industryId"
+              value={industryId}
+              onChange={(e) => setIndustryId(e.target.value)}
+            >
+              <option value="">Select industry…</option>
+              {taxonomy.industries.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="categoryId">Category</Label>
+            <Select
+              id="categoryId"
+              name="categoryId"
+              defaultValue={defaults.categoryId ?? ""}
+              disabled={!industryId}
+            >
+              <option value="">
+                {industryId ? "Select category…" : "Select an industry first"}
+              </option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Contact ─────────────────────────────────────────────── */}
+      <div className="space-y-4 border-t border-border pt-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Contact
+        </p>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="website">Website</Label>
+            <Input
+              id="website"
+              name="website"
+              defaultValue={defaults.website ?? ""}
+              placeholder="https://"
+            />
+            <FieldError messages={state.fieldErrors?.website} />
+          </div>
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              defaultValue={defaults.email ?? ""}
+            />
+            <FieldError messages={state.fieldErrors?.email} />
+          </div>
+          <div>
+            <Label htmlFor="phone">Phone</Label>
+            <Input id="phone" name="phone" defaultValue={defaults.phone ?? ""} />
+          </div>
+          <div>
+            <Label htmlFor="whatsapp">WhatsApp</Label>
+            <Input id="whatsapp" name="whatsapp" defaultValue={defaults.whatsapp ?? ""} />
+          </div>
+          <div>
+            <Label htmlFor="linkedin">LinkedIn</Label>
+            <Input
+              id="linkedin"
+              name="linkedin"
+              defaultValue={defaults.linkedin ?? ""}
+              placeholder="https://"
+            />
+            <FieldError messages={state.fieldErrors?.linkedin} />
+          </div>
+          <div>
+            <Label htmlFor="instagram">Instagram</Label>
+            <Input
+              id="instagram"
+              name="instagram"
+              defaultValue={defaults.instagram ?? ""}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Location ────────────────────────────────────────────── */}
+      <div className="space-y-4 border-t border-border pt-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Location
+        </p>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="sm:col-span-3">
+            <Label htmlFor="addressLine">Address</Label>
+            <Input
+              id="addressLine"
+              name="addressLine"
+              defaultValue={defaults.addressLine ?? ""}
+            />
+          </div>
+          <div>
+            <Label htmlFor="city">City</Label>
+            <Input id="city" name="city" defaultValue={defaults.city ?? ""} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="country">Country</Label>
+            <Input id="country" name="country" defaultValue={defaults.country ?? ""} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Rotarian discount ───────────────────────────────────── */}
+      <div className="space-y-4 border-t border-border pt-5">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Rotarian discount
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Show fellow Rotarians the exclusive discount you offer them.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
           <div>
             <Label htmlFor="discountPercent">
               Discount{" "}
               <span className="font-normal text-muted-foreground">(% off)</span>
             </Label>
-            <div className="relative mt-1">
+            <div className="relative">
               <Input
                 id="discountPercent"
                 name="discountPercent"
@@ -270,7 +315,9 @@ export function BusinessForm({
       <input type="hidden" name="coverUrl" value={coverUrl} />
       <input type="hidden" name="galleryUrls" value={JSON.stringify(gallery)} />
 
-      <SubmitButton label={submitLabel} />
+      <div className="border-t border-border pt-5">
+        <SubmitButton label={submitLabel} />
+      </div>
     </form>
   );
 }
