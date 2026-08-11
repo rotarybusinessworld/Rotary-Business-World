@@ -5,7 +5,7 @@
    Deep navy + refined gold + serif display, drawn from the RBW emblem.
    Light, spacious content surfaces; dark navy chrome (header/hero/footer).
 --------------------------------------------------------------------------- */
-@theme { 
+@theme {
   /* Brand — navy & gold from the logo */
   --color-navy: #0b1226;
   --color-navy-800: #111a33;
