@@ -5,13 +5,15 @@ import { z } from "zod";
  * fast with a clear message instead of throwing a vague 500 on first request.
  *
  * Two layers, on purpose:
- *  - The base schema (below) enforces only what's needed to boot at all
- *    (DATABASE_URL, AUTH_SECRET) plus type/format for everything else. This runs
- *    at *import*, which includes `next build` — so it must NOT require the
- *    production-only secret groups, or local builds without Stripe/S3 keys break.
- *  - `assertProductionEnv()` enforces the Stripe + S3 groups and is called from
- *    `instrumentation.ts` at server *start* (never during build), mirroring the
- *    existing "demo mode is refused in production" intent.
+ *  - The base schema (below) is the FATAL layer: it enforces what's needed to
+ *    boot at all (DATABASE_URL, AUTH_SECRET) plus type/format for everything
+ *    else. It runs at *import*, which includes `next build` — so it must NOT
+ *    require the production-only integration groups, or local builds without
+ *    Stripe/S3 keys would break.
+ *  - `missingProductionEnv()` is the ADVISORY layer: it reports missing (but
+ *    non-fatal) production integrations — Stripe, S3, AUTH_URL — so
+ *    `instrumentation.ts` can log a loud warning at server start WITHOUT aborting
+ *    boot. A missing image CDN must not take the whole app down.
  */
 
 const LOG_LEVELS = [
@@ -64,14 +66,20 @@ function parseEnv(): Env {
 export const env = parseEnv();
 
 /**
- * Enforced only when actually serving in production. Called from
- * `instrumentation.ts` (server start), NOT at import, so `next build` and dev
- * are unaffected.
+ * Production integrations that are strongly recommended but NOT boot-critical.
+ * Returns the list of missing ones (empty in non-production) so the caller can
+ * log a loud warning WITHOUT aborting startup.
+ *
+ * These are deliberately not fatal: missing Stripe only 503s the payment routes
+ * (demo mode is already refused in production), and missing S3 degrades uploads
+ * to local disk. Neither makes the app unsafe or unable to serve pages — so a
+ * misconfiguration here should be visible in logs, not a full outage. The truly
+ * required vars (DATABASE_URL, AUTH_SECRET) are enforced at parse time above.
  */
-export function assertProductionEnv(): void {
-  if (env.NODE_ENV !== "production") return;
+export function missingProductionEnv(): string[] {
+  if (env.NODE_ENV !== "production") return [];
 
-  const required: Array<[keyof Env, string]> = [
+  const recommended: Array<[keyof Env, string]> = [
     ["AUTH_URL", "AUTH_URL (deployed base URL)"],
     ["STRIPE_SECRET_KEY", "Stripe secret key"],
     ["STRIPE_WEBHOOK_SECRET", "Stripe webhook secret"],
@@ -82,13 +90,7 @@ export function assertProductionEnv(): void {
     ["NEXT_PUBLIC_S3_PUBLIC_HOSTNAME", "S3 public hostname"],
   ];
 
-  const missing = required
+  return recommended
     .filter(([key]) => !env[key])
-    .map(([key, label]) => `  - ${key}: ${label}`);
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required production environment variables:\n${missing.join("\n")}`,
-    );
-  }
+    .map(([key, label]) => `${key} (${label})`);
 }
