@@ -49,6 +49,7 @@ model User {
   passwordHash   String
   role           Role       @default(MEMBER)
   status         UserStatus @default(PENDING)
+  hasPaid        Boolean    @default(false)
   emailVerifiedAt DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -222,6 +223,9 @@ model Business {
   lng         Float?
   linkedin    String?
   instagram   String?
+  // Rotarian-member discount offered by this business
+  discountPercent Int?
+  discountNote    String?
   status      BusinessStatus @default(ACTIVE)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt

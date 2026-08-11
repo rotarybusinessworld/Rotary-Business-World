@@ -7,6 +7,7 @@ import { FiltersPanel } from "@/frontend/search/filters-panel";
 import { DirectoryCard } from "@/frontend/search/directory-card";
 import { DirectoryRightRail } from "@/frontend/search/directory-right-rail";
 import { getSearchService } from "@/backend/search";
+import { requirePaid } from "@/backend/auth-helpers";
 import { buttonVariants } from "@/frontend/ui/button";
 import { activeFilterCount } from "@/frontend/search/facet-utils";
 import { BadgeCheck, SearchX } from "lucide-react";
@@ -27,6 +28,8 @@ export default async function DirectoryPage({
 }: {
   searchParams: Promise<SP>;
 }) {
+  await requirePaid("/directory");
+
   const sp = await searchParams;
   const q = first(sp.q);
   const industry = first(sp.industry);

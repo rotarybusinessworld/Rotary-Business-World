@@ -73,6 +73,8 @@ export default async function EditBusinessPage({
                 linkedin: business.linkedin,
                 instagram: business.instagram,
                 gallery: business.images.map((img) => img.url),
+                discountPercent: business.discountPercent,
+                discountNote: business.discountNote,
               }}
             />
           </CardContent>

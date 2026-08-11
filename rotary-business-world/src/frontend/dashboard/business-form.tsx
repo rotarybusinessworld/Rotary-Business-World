@@ -31,6 +31,8 @@ export type BusinessDefaults = {
   linkedin?: string | null;
   instagram?: string | null;
   gallery?: string[];
+  discountPercent?: number | null;
+  discountNote?: string | null;
 };
 
 function SubmitButton({ label }: { label: string }) {
@@ -212,6 +214,54 @@ export function BusinessForm({
         <div>
           <Label htmlFor="country">Country</Label>
           <Input id="country" name="country" defaultValue={defaults.country ?? ""} />
+        </div>
+      </div>
+
+      {/* ── Rotarian discount ────────────────────────────────── */}
+      <div className="rounded-[var(--radius)] border border-border p-5">
+        <h3 className="font-[family-name:var(--font-display)] text-base font-semibold">
+          Rotarian discount
+        </h3>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          Show fellow Rotarians the exclusive discount you offer them.
+        </p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-[140px_1fr]">
+          <div>
+            <Label htmlFor="discountPercent">
+              Discount{" "}
+              <span className="font-normal text-muted-foreground">(% off)</span>
+            </Label>
+            <div className="relative mt-1">
+              <Input
+                id="discountPercent"
+                name="discountPercent"
+                type="number"
+                min={1}
+                max={100}
+                defaultValue={defaults.discountPercent ?? ""}
+                placeholder="e.g. 15"
+                className="pr-8"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                %
+              </span>
+            </div>
+            <FieldError messages={state.fieldErrors?.discountPercent} />
+          </div>
+          <div>
+            <Label htmlFor="discountNote">
+              Short note{" "}
+              <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="discountNote"
+              name="discountNote"
+              defaultValue={defaults.discountNote ?? ""}
+              placeholder="e.g. on all services, first visit free…"
+              maxLength={120}
+            />
+            <FieldError messages={state.fieldErrors?.discountNote} />
+          </div>
         </div>
       </div>
 

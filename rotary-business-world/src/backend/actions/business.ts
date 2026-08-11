@@ -57,6 +57,14 @@ function toInput(
     linkedin: orNull(formData.get("linkedin")),
     instagram: orNull(formData.get("instagram")),
     gallery: parseGallery(formData.get("galleryUrls")),
+    // Parse discount percent as a number; orNull would return string | null.
+    discountPercent: (() => {
+      const raw = formData.get("discountPercent");
+      const s = raw == null ? "" : String(raw).trim();
+      const n = s === "" ? NaN : Number(s);
+      return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+    })(),
+    discountNote: orNull(formData.get("discountNote")),
   };
 }
 

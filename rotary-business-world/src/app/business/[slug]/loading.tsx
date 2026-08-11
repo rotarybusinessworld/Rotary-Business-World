@@ -20,10 +20,7 @@ export default function BusinessLoading() {
           <Skeleton className="h-48 w-full rounded-none sm:h-64 lg:h-72" />
           {/* Info block */}
           <div className="px-4 pb-5 pt-0 sm:px-6">
-            <div className="flex items-end justify-between gap-4">
-              <Skeleton className="-mt-12 h-24 w-24 shrink-0 rounded-[var(--radius)] ring-4 ring-card" />
-              <Skeleton className="mb-1 h-9 w-28 rounded-full" />
-            </div>
+            <Skeleton className="-mt-12 h-24 w-24 shrink-0 rounded-[var(--radius)] ring-4 ring-card" />
             <Skeleton className="mt-3 h-8 w-3/5" />
             <div className="mt-2 flex gap-2">
               <Skeleton className="h-5 w-24 rounded-full" />

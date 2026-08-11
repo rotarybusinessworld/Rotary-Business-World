@@ -40,7 +40,7 @@ export function CardTitle({
   return (
     <h3
       className={cn(
-        "font-[family-name:var(--font-display)] text-lg font-semibold",
+        "font-[family-name:var(--font-display)] text-base font-semibold",
         className,
       )}
       {...props}

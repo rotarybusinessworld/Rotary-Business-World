@@ -38,5 +38,12 @@ export const businessSchema = z.object({
   country: z.string().max(120).optional().or(z.literal("")),
   linkedin: z.string().url().optional().or(z.literal("")),
   instagram: z.string().max(200).optional().or(z.literal("")),
+  // Rotarian discount — coerce carefully: FormData sends "" for empty, which
+  // z.coerce.number() would turn into 0. Preprocess to undefined first.
+  discountPercent: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().int().min(1).max(100).optional(),
+  ),
+  discountNote: z.string().max(120).optional().or(z.literal("")),
 });
 export type BusinessInput = z.infer<typeof businessSchema>;

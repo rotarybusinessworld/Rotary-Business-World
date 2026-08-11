@@ -2,19 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Menu, Search, ShieldCheck, X } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, Search, ShieldCheck, X } from "lucide-react";
 
-const panelLink =
-  "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[15px] font-medium text-white/80 transition-colors hover:bg-white/5 hover:text-white";
-
-/** Mobile hamburger menu. Fed by the server `SiteHeader` (auth-aware). */
 export function MobileNav({
   isAuthed,
   isAdmin,
+  userInitial,
+  userName,
   signOutAction,
 }: {
   isAuthed: boolean;
   isAdmin: boolean;
+  userInitial?: string;
+  userName?: string;
   signOutAction: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -22,74 +22,129 @@ export function MobileNav({
 
   return (
     <div className="md:hidden">
+      {/* Hamburger pill */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Close menu" : "Open menu"}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/5 hover:text-white"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-white/20 text-white/80 transition-all duration-150 hover:bg-white/[0.09] hover:ring-white/30 hover:text-white active:scale-95"
       >
-        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        <span
+          className="transition-all duration-200"
+          style={{ transform: open ? "rotate(90deg)" : "none" }}
+        >
+          {open ? <X className="h-[18px] w-[18px]" /> : <Menu className="h-[18px] w-[18px]" />}
+        </span>
       </button>
 
       {open && (
         <>
-          {/* tap-to-close backdrop, below the header */}
+          {/* Backdrop */}
           <button
             type="button"
             aria-hidden="true"
             tabIndex={-1}
             onClick={close}
-            className="fixed inset-x-0 bottom-0 top-[68px] z-40 bg-navy/60 backdrop-blur-sm"
+            className="fixed inset-x-0 bottom-0 top-[68px] z-40 bg-navy/70 backdrop-blur-[3px]"
           />
-          {/* slide-down panel */}
-          <div className="absolute inset-x-0 top-[68px] z-50 origin-top animate-fade-in-up border-b border-rotary-gold/15 bg-navy px-4 pb-5 pt-3 shadow-[var(--shadow-pop)]">
-            <nav className="flex flex-col gap-1">
-              <Link href="/directory" onClick={close} className={panelLink}>
-                <Search className="h-4 w-4" />
-                Directory
-              </Link>
 
-              {isAuthed ? (
-                <>
-                  <Link href="/dashboard" onClick={close} className={panelLink}>
-                    <LayoutDashboard className="h-4 w-4" />
+          {/* Slide-down panel */}
+          <div className="absolute inset-x-0 top-[68px] z-50 overflow-hidden border-b border-white/[0.08] bg-navy shadow-[0_8px_32px_rgba(0,0,0,0.45)] animate-fade-in-up">
+
+            {/* Gold hairline */}
+            <div className="h-px w-full bg-gradient-to-r from-transparent via-rotary-gold/40 to-transparent" />
+
+            <div className="px-4 pb-6 pt-5">
+
+              {/* User identity when signed in */}
+              {isAuthed && userInitial && (
+                <div className="mb-5 flex items-center gap-3.5 rounded-xl border border-white/[0.09] bg-white/[0.04] px-4 py-3.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rotary-gold/20 text-[15px] font-bold text-rotary-gold-light ring-1 ring-rotary-gold/30">
+                    {userInitial}
+                  </div>
+                  <div className="min-w-0">
+                    {userName && (
+                      <p className="truncate text-sm font-semibold text-white">
+                        {userName}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-white/45">Signed in as member</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Nav section label */}
+              <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
+                Navigate
+              </p>
+
+              {/* Nav links */}
+              <nav className="flex flex-col gap-0.5">
+                <Link
+                  href="/directory"
+                  onClick={close}
+                  className="group flex min-h-[48px] items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
+                >
+                  <Search className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
+                  Directory
+                </Link>
+
+                {isAuthed && (
+                  <Link
+                    href="/dashboard"
+                    onClick={close}
+                    className="group flex min-h-[48px] items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
+                  >
+                    <LayoutDashboard className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
                     Dashboard
                   </Link>
-                  {isAdmin && (
-                    <Link
-                      href="/admin/verifications"
-                      onClick={close}
-                      className={panelLink}
-                    >
-                      <ShieldCheck className="h-4 w-4" />
-                      Admin
-                    </Link>
-                  )}
-                  <form action={signOutAction} className="mt-2">
+                )}
+
+                {isAdmin && (
+                  <Link
+                    href="/admin/verifications"
+                    onClick={close}
+                    className="group flex min-h-[48px] items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
+                  >
+                    <ShieldCheck className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
+                    Admin
+                  </Link>
+                )}
+              </nav>
+
+              {/* Auth section */}
+              <div className="mt-5 border-t border-white/[0.08] pt-5">
+                {isAuthed ? (
+                  <form action={signOutAction}>
                     <button
                       type="submit"
-                      className="w-full rounded-full border border-white/15 px-4 py-2.5 text-sm font-medium text-white/80 transition-colors hover:border-white/30 hover:text-white"
+                      className="group flex min-h-[48px] w-full items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/50 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
                     >
+                      <LogOut className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
                       Sign out
                     </button>
                   </form>
-                </>
-              ) : (
-                <>
-                  <Link href="/login" onClick={close} className={panelLink}>
-                    Log in
-                  </Link>
-                  <Link
-                    href="/register"
-                    onClick={close}
-                    className="mt-2 inline-flex items-center justify-center rounded-full bg-rotary-gold px-4 py-2.5 text-sm font-semibold text-secondary-foreground shadow-[var(--shadow-gold)] transition-colors hover:bg-rotary-gold-light"
-                  >
-                    Join the network
-                  </Link>
-                </>
-              )}
-            </nav>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    <Link
+                      href="/login"
+                      onClick={close}
+                      className="flex min-h-[48px] items-center justify-center rounded-xl border border-white/20 px-4 text-sm font-semibold text-white/80 transition-colors hover:border-white/35 hover:text-white"
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={close}
+                      className="flex min-h-[48px] items-center justify-center rounded-full bg-rotary-gold px-4 text-sm font-semibold text-secondary-foreground shadow-[var(--shadow-gold)] transition-colors hover:bg-rotary-gold-light"
+                    >
+                      Join the network
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </>
       )}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/frontend/site-header";
 import { Logo } from "@/frontend/brand/logo";
-import { HeroVideoMobile } from "@/frontend/brand/hero-video";
+import { HeroVideoMobile, HeroVideoDesktopCard } from "@/frontend/brand/hero-video";
 import { buttonVariants } from "@/frontend/ui/button";
 import {
   BadgeCheck,
@@ -131,30 +131,7 @@ export default function HomePage() {
                 "radial-gradient(50% 50% at 50% 50%, rgba(201,162,76,0.45), transparent 70%)",
             }}
           />
-          <div className="group relative overflow-hidden rounded-2xl shadow-[var(--shadow-gold)] ring-1 ring-rotary-gold/40 transition-transform duration-300 ease-out hover:-translate-y-1">
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              poster="/brand/rotary-hero-poster.jpg"
-              aria-hidden="true"
-              className="aspect-square w-full object-cover motion-reduce:hidden"
-            >
-              <source src="/brand/rotary-hero.mp4" type="video/mp4" />
-            </video>
-            {/* reduced-motion: show the still poster only */}
-            <div
-              aria-hidden
-              className="hidden aspect-square w-full bg-cover bg-center motion-reduce:block"
-              style={{ backgroundImage: "url('/brand/rotary-hero-poster.jpg')" }}
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10"
-            />
-          </div>
+          <HeroVideoDesktopCard />
           {/* floating caption pill */}
           <span className="absolute -bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-navy-700/90 px-3 py-1 text-[11px] font-medium text-rotary-gold-light ring-1 ring-rotary-gold/30 backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-rotary-gold" />

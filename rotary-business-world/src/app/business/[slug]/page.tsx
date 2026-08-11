@@ -8,7 +8,7 @@ import { BusinessGallery } from "@/frontend/business/business-gallery";
 import { Badge } from "@/frontend/ui/badge";
 import { Card, CardContent } from "@/frontend/ui/card";
 import { buttonVariants } from "@/frontend/ui/button";
-import { auth } from "@/backend/auth";
+import { requirePaid } from "@/backend/auth-helpers";
 import { db } from "@/backend/db";
 import type { BusinessHit } from "@/backend/search/types";
 import {
@@ -23,6 +23,7 @@ import {
   MapPin,
   MessageCircle,
   Pencil,
+  Percent,
   Phone,
 } from "lucide-react";
 
@@ -62,11 +63,12 @@ export default async function BusinessDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const viewer = await requirePaid(`/business/${slug}`);
+
   const business = await getBusiness(slug);
   if (!business || business.status !== "ACTIVE") notFound();
 
-  const session = await auth();
-  const isOwner = session?.user?.id === business.ownerId;
+  const isOwner = viewer.id === business.ownerId;
   const ownerVerified = business.owner.status === "VERIFIED";
   const location = [business.city, business.country].filter(Boolean).join(", ");
   const address = [business.addressLine, business.city, business.country]
@@ -244,18 +246,19 @@ export default async function BusinessDetailPage({
 
           {/* Info block */}
           <div className="px-4 pb-5 pt-0 sm:px-6">
-            {/* Logo — overlaps the cover with negative margin */}
-            <div className="-mt-10 mb-3 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[var(--radius)] border-4 border-card bg-muted shadow-[var(--shadow-card)]">
+            {/* Logo — half-overlaps the cover; solid bg-card ring so it reads
+                cleanly against the dark navy cover above */}
+            <div className="relative z-10 -mt-12 mb-3 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius)] bg-card ring-4 ring-card shadow-[var(--shadow-card)]">
               {business.logoUrl ? (
                 <Image
                   src={business.logoUrl}
                   alt=""
-                  width={80}
-                  height={80}
+                  width={96}
+                  height={96}
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <Building2 className="h-8 w-8 text-muted-foreground" />
+                <Building2 className="h-10 w-10 text-muted-foreground/50" />
               )}
             </div>
 
@@ -287,6 +290,21 @@ export default async function BusinessDetailPage({
                 </span>
               )}
             </div>
+
+            {/* Rotarian discount badge */}
+            {!!business.discountPercent && (
+              <div className="mt-3 flex w-fit items-center gap-2 rounded-full border border-rotary-gold/30 bg-[color-mix(in_srgb,var(--color-rotary-gold)_8%,white)] px-3.5 py-1.5">
+                <Percent className="h-3.5 w-3.5 shrink-0 text-rotary-gold-dark" />
+                <span className="text-sm font-semibold text-rotary-gold-dark">
+                  {business.discountPercent}% OFF for Rotarians
+                </span>
+                {business.discountNote && (
+                  <span className="text-sm text-muted-foreground">
+                    · {business.discountNote}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -342,7 +360,7 @@ export default async function BusinessDetailPage({
             {business.description && (
               <Card>
                 <CardContent className="p-5 sm:p-6">
-                  <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-semibold">
+                  <h2 className="mb-3 font-[family-name:var(--font-display)] text-base font-semibold">
                     About
                   </h2>
                   <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
@@ -356,7 +374,7 @@ export default async function BusinessDetailPage({
             {business.images.length > 0 && (
               <Card>
                 <CardContent className="p-5 sm:p-6">
-                  <h2 className="mb-4 font-[family-name:var(--font-display)] text-lg font-semibold">
+                  <h2 className="mb-4 font-[family-name:var(--font-display)] text-base font-semibold">
                     Gallery
                   </h2>
                   <BusinessGallery
@@ -383,6 +401,28 @@ export default async function BusinessDetailPage({
 
           {/* ── RIGHT: Sidebar ────────────────────────────────── */}
           <aside className="space-y-4">
+            {/* Rotarian discount card */}
+            {!!business.discountPercent && (
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="bg-navy-800 px-5 py-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-rotary-gold/70">
+                      Rotarian offer
+                    </p>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-rotary-gold">
+                        {business.discountPercent}%
+                      </span>
+                      <span className="text-lg font-semibold text-white/80">OFF</span>
+                    </div>
+                    {business.discountNote && (
+                      <p className="mt-1 text-sm text-white/60">{business.discountNote}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Get in touch card */}
             {sidebarContacts.length > 0 && (
               <Card>

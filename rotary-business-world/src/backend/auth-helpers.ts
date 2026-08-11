@@ -2,16 +2,33 @@ import { redirect } from "next/navigation";
 import { auth } from "@/backend/auth";
 import { db } from "@/backend/db";
 
-/** Require a logged-in user; redirect to /login otherwise. */
-export async function requireUser() {
+/** Require a logged-in user; redirect to /login (with optional callbackUrl) otherwise. */
+export async function requireUser(callbackUrl?: string) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user) {
+    const next = callbackUrl ? `?next=${encodeURIComponent(callbackUrl)}` : "";
+    redirect(`/login${next}`);
+  }
   return session.user;
 }
 
-/** Require a VERIFIED user; PENDING users are sent to the dashboard. */
+/**
+ * Require a logged-in user who has completed the membership payment step.
+ * Redirects to /onboarding/payment if the user hasn't paid yet.
+ */
+export async function requirePaid(callbackUrl?: string) {
+  const user = await requireUser(callbackUrl);
+  const record = await db.user.findUnique({
+    where: { id: user.id },
+    select: { hasPaid: true },
+  });
+  if (!record?.hasPaid) redirect("/onboarding/payment");
+  return user;
+}
+
+/** Require a VERIFIED user who has paid; unverified users go to dashboard. */
 export async function requireVerified() {
-  const user = await requireUser();
+  const user = await requirePaid();
   if (user.status !== "VERIFIED") redirect("/dashboard");
   return user;
 }
@@ -27,27 +44,17 @@ export async function requireAdmin() {
 
 /**
  * Require a super-admin (management account only).
- * Club admins are redirected to their own admin dashboard.
  */
 export async function requireSuperAdmin() {
   const user = await requireUser();
   if (user.role !== "SUPER_ADMIN") {
-    // Club admins exist but don't have access to super-admin surfaces.
     redirect(user.role === "CLUB_ADMIN" ? "/admin" : "/dashboard");
   }
   return user;
 }
 
-/**
- * Admin scope for the current request.
- *
- * Returns the user + their managed district id (null for SUPER_ADMIN — they see all).
- * Resolves the district from the DB each request so the scope is never stale after
- * a reassignment (role lives in the JWT and needs a re-login to refresh; scope doesn't).
- */
 export type AdminScope = {
   user: Awaited<ReturnType<typeof requireAdmin>>;
-  /** null → SUPER_ADMIN, sees all districts. non-null → CLUB_ADMIN, scoped to one district. */
   managedDistrictId: string | null;
 };
 
@@ -58,7 +65,6 @@ export async function getAdminScope(): Promise<AdminScope> {
     return { user, managedDistrictId: null };
   }
 
-  // CLUB_ADMIN — look up their assigned district from the DB.
   const record = await db.user.findUnique({
     where: { id: user.id },
     select: { managedDistrictId: true },

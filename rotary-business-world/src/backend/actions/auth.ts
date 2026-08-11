@@ -6,14 +6,6 @@ import { registerSchema, loginSchema } from "@/shared/validators";
 import { registerMember } from "@/backend/services/registration";
 import { isAppError } from "@/backend/errors";
 
-/**
- * Web adapter for registration/login.
- *
- * Account creation + roster verification live in
- * `@/backend/services/registration`; only the cookie-session `signIn` handshake
- * stays here, since that's Auth.js-specific.
- */
-
 export type FormState = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
@@ -41,13 +33,12 @@ export async function registerAction(
     throw err;
   }
 
-  // Sign the user in; PENDING users can log in but see a "pending" state.
-  // signIn throws a redirect on success (re-thrown) and AuthError on failure.
+  // Registration complete — redirect to the membership payment step.
   try {
     await signIn("credentials", {
       email: data.email.toLowerCase(),
       password: data.password,
-      redirectTo: "/dashboard",
+      redirectTo: "/onboarding/payment",
     });
   } catch (err) {
     if (err instanceof AuthError) {
@@ -67,11 +58,16 @@ export async function loginAction(
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
+  // Safe relative-URL redirect: only honour paths that start with `/`
+  const rawNext = formData.get("next");
+  const next =
+    typeof rawNext === "string" && rawNext.startsWith("/") ? rawNext : null;
+
   try {
     await signIn("credentials", {
       email: parsed.data.email.toLowerCase(),
       password: parsed.data.password,
-      redirectTo: "/dashboard",
+      redirectTo: next ?? "/dashboard",
     });
   } catch (err) {
     if (err instanceof AuthError) {

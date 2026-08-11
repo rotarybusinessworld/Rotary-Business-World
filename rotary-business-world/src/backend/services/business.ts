@@ -31,6 +31,9 @@ export type BusinessInput = {
   country?: string | null;
   linkedin?: string | null;
   instagram?: string | null;
+  /** Rotarian-member discount. */
+  discountPercent?: number | null;
+  discountNote?: string | null;
   /** Ordered gallery image URLs; replaces the existing gallery on update. */
   gallery?: string[];
 };
@@ -81,6 +84,8 @@ function scalarFields(input: BusinessInput) {
     country: input.country ?? null,
     linkedin: input.linkedin ?? null,
     instagram: input.instagram ?? null,
+    discountPercent: input.discountPercent ?? null,
+    discountNote: input.discountNote ?? null,
   };
 }
 

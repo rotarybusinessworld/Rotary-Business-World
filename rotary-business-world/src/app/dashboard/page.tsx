@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { SiteHeader } from "@/frontend/site-header";
-import { requireUser } from "@/backend/auth-helpers";
+import { requirePaid } from "@/backend/auth-helpers";
 import { db } from "@/backend/db";
 import { Badge } from "@/frontend/ui/badge";
 import { buttonVariants } from "@/frontend/ui/button";
@@ -19,7 +19,7 @@ import type { Business } from "@prisma/client";
 export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const sessionUser = await requireUser();
+  const sessionUser = await requirePaid();
   const user = await db.user.findUnique({
     where: { id: sessionUser.id },
     include: { profile: true, businesses: true },

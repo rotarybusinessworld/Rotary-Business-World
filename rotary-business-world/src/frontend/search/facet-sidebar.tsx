@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { cn } from "@/shared/utils";
 import type { Facet } from "@/backend/search/types";
 import { withParam, clearFiltersHref, type FacetCurrent } from "./facet-utils";
@@ -16,12 +17,13 @@ function FacetGroup({
 }) {
   if (facets.length === 0) return null;
   const active = current[paramKey];
+
   return (
     <div>
-      <h3 className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+      <h3 className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
         {title}
       </h3>
-      <ul>
+      <ul className="space-y-0.5">
         {facets.map((f) => {
           const isActive = active === f.value;
           return (
@@ -29,15 +31,29 @@ function FacetGroup({
               <Link
                 href={withParam(current, paramKey, f.value)}
                 className={cn(
-                  "flex min-h-[40px] items-center justify-between rounded-lg px-2 py-2 text-sm transition-colors duration-150 hover:bg-muted",
+                  "flex min-h-[44px] items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150",
                   isActive
-                    ? "bg-accent font-medium text-accent-foreground"
-                    : "text-foreground/80",
+                    ? "bg-navy/[0.07] font-semibold text-navy"
+                    : "text-foreground/80 hover:bg-muted hover:text-foreground",
                 )}
               >
-                <span className="truncate">{f.value}</span>
-                <span className="ml-2 shrink-0 text-xs text-muted-foreground">
-                  {isActive ? "×" : f.count}
+                <span className="flex min-w-0 items-center gap-2.5">
+                  {/* gold left accent when active */}
+                  <span
+                    className={cn(
+                      "h-3.5 w-0.5 shrink-0 rounded-full transition-colors duration-150",
+                      isActive ? "bg-rotary-gold" : "bg-transparent",
+                    )}
+                    aria-hidden
+                  />
+                  <span className="truncate">{f.value}</span>
+                </span>
+                <span className="shrink-0">
+                  {isActive ? (
+                    <Check className="h-3.5 w-3.5 text-rotary-gold-dark" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{f.count}</span>
+                  )}
                 </span>
               </Link>
             </li>
@@ -56,6 +72,7 @@ export function FacetSidebar({
   current: FacetCurrent;
 }) {
   const hasFilters = current.industry || current.country || current.city;
+
   return (
     <div className="rounded-[var(--radius)] border border-border bg-card shadow-[var(--shadow-card)]">
       {/* Header */}
@@ -66,7 +83,7 @@ export function FacetSidebar({
         {hasFilters && (
           <Link
             href={clearFiltersHref(current)}
-            className="text-xs text-primary hover:underline"
+            className="text-xs font-medium text-rotary-gold-dark hover:underline"
           >
             Clear all
           </Link>

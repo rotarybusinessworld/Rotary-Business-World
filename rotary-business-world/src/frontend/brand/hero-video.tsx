@@ -1,167 +1,237 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
-import { Maximize2, X } from "lucide-react";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { Volume2, VolumeX } from "lucide-react";
+
+const AUDIO_VOLUME = 0.5; // "mid" — medium volume per brand request
 
 /**
- * Mobile-only hero video component.
+ * Audio-aware hero video hook.
  *
- * Renders a square (1:1) card that autoplays the branded clip muted + looping
- * inline — sitting in-flow between the headline and the search bar.
- * Tapping the card opens a fullscreen modal where the video plays with sound.
+ * The hero renders TWO video elements (one for mobile, one for the desktop
+ * floating card) but only one is on-screen at a given breakpoint. To avoid
+ * double audio we gate sound to the instance that matches the current viewport
+ * (`side`), driven by a matchMedia query on the `lg` breakpoint.
  *
- * Hidden on lg+ (desktop uses the small absolute-positioned floating card in page.tsx).
- *
- * Source video is 512×512 (square); `aspect-square` + `object-cover` shows it correctly.
+ * Browsers block UNMUTED autoplay for visitors with no media-engagement, so we:
+ *   1. autoplay muted (always allowed),
+ *   2. attempt an immediate unmuted play (works for returning/engaged users),
+ *   3. otherwise unmute on the first user gesture anywhere on the page.
+ * A manual mute/unmute click takes over and is respected from then on.
  */
-export function HeroVideoMobile() {
-  const [open, setOpen] = useState(false);
-  const modalVideoRef = useRef<HTMLVideoElement>(null);
+function useVideoAudio(side: "mobile" | "desktop") {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(true);
+  const userTookControl = useRef(false);
 
-  const openModal = useCallback(() => setOpen(true), []);
-  const closeModal = useCallback(() => {
-    setOpen(false);
-    if (modalVideoRef.current) {
-      modalVideoRef.current.pause();
-      modalVideoRef.current.currentTime = 0;
-      modalVideoRef.current.muted = true; // reset so next open re-unmutes cleanly
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const isActiveSide = () => (side === "desktop" ? mq.matches : !mq.matches);
+
+    v.volume = AUDIO_VOLUME;
+
+    const unmute = () => {
+      if (userTookControl.current || !isActiveSide()) return;
+      v.muted = false;
+      v.volume = AUDIO_VOLUME;
+      v.play()
+        .then(() => setMuted(false))
+        .catch(() => {
+          // still blocked — stay muted, wait for a gesture
+          v.muted = true;
+          setMuted(true);
+        });
+    };
+
+    // 1 + 2: muted autoplay, then try to promote to sound on the active side.
+    if (isActiveSide()) {
+      v.muted = false;
+      v.play()
+        .then(() => setMuted(false))
+        .catch(() => {
+          v.muted = true;
+          setMuted(true);
+          v.play().catch(() => {});
+        });
+    } else {
+      v.muted = true;
+      setMuted(true);
+      v.play().catch(() => {});
     }
+
+    // 3: first user gesture anywhere unmutes the active instance. Gestures on
+    //    the video card's own controls are ignored (toggleMute handles those).
+    const onGesture = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-hero-video]")) return;
+      unmute();
+      teardownGesture();
+    };
+    const teardownGesture = () => {
+      document.removeEventListener("pointerdown", onGesture);
+      document.removeEventListener("keydown", onGesture);
+      document.removeEventListener("touchstart", onGesture);
+    };
+    document.addEventListener("pointerdown", onGesture);
+    document.addEventListener("keydown", onGesture);
+    document.addEventListener("touchstart", onGesture);
+
+    // Breakpoint change: mute whichever instance is no longer on-screen so
+    // audio never plays from a hidden video.
+    const onBreakpoint = () => {
+      if (!isActiveSide()) {
+        v.muted = true;
+        setMuted(true);
+      } else if (!userTookControl.current) {
+        unmute();
+      }
+    };
+    mq.addEventListener("change", onBreakpoint);
+
+    return () => {
+      teardownGesture();
+      mq.removeEventListener("change", onBreakpoint);
+    };
+  }, [side]);
+
+  const toggleMute = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    userTookControl.current = true;
+    const next = !v.muted; // read the live element state to avoid races
+    v.muted = next;
+    if (!next) v.volume = AUDIO_VOLUME;
+    setMuted(next);
   }, []);
 
-  // Play with sound when modal opens
-  useEffect(() => {
-    if (!open || !modalVideoRef.current) return;
-    const v = modalVideoRef.current;
-    v.muted = false;
-    v.play().catch(() => {
-      // Some browsers block unmuted autoplay; fall back to muted
-      v.muted = true;
-      v.play().catch(() => {});
-    });
-  }, [open]);
+  return { videoRef, muted, toggleMute };
+}
 
-  // Keyboard dismiss
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeModal();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, closeModal]);
+/** Floating mute/unmute button — used inside both video cards */
+function MuteButton({
+  muted,
+  onToggle,
+}: {
+  muted: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={muted ? "Unmute video" : "Mute video"}
+      className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+    >
+      {muted ? (
+        <VolumeX className="h-3.5 w-3.5" />
+      ) : (
+        <Volume2 className="h-3.5 w-3.5" />
+      )}
+    </button>
+  );
+}
 
-  // Lock body scroll while modal is open
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
+/**
+ * Mobile inline hero video — plays in-flow between the headline and search bar
+ * on screens below lg.
+ */
+export function HeroVideoMobile() {
+  const { videoRef, muted, toggleMute } = useVideoAudio("mobile");
 
   return (
-    <>
-      {/* ── Inline autoplay card (mobile only) ─────────────────────────────── */}
-      <div className="lg:hidden relative mx-auto mt-7 w-full max-w-[300px]">
-        {/* Ambient gold glow */}
+    <div className="lg:hidden relative mx-auto mt-7 w-full max-w-[300px]">
+      {/* Ambient gold glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -inset-5 rounded-[2.5rem] opacity-65 blur-2xl"
+        style={{
+          background:
+            "radial-gradient(50% 50% at 50% 50%, rgba(201,162,76,0.55), transparent 70%)",
+        }}
+      />
+
+      <div
+        data-hero-video
+        className="relative overflow-hidden rounded-2xl shadow-[var(--shadow-gold)] ring-1 ring-rotary-gold/40"
+      >
+        <div className="aspect-square w-full bg-navy-800">
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            poster="/brand/rotary-hero-poster.jpg"
+            className="h-full w-full object-cover motion-reduce:hidden"
+          >
+            <source src="/brand/rotary-hero.mp4" type="video/mp4" />
+          </video>
+          <div
+            aria-hidden
+            className="hidden h-full w-full bg-cover bg-center motion-reduce:block"
+            style={{ backgroundImage: "url('/brand/rotary-hero-poster.jpg')" }}
+          />
+        </div>
+
+        <MuteButton muted={muted} onToggle={toggleMute} />
+
+        {/* Caption */}
+        <div className="absolute bottom-3 left-3.5 flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-rotary-gold" />
+          <span className="text-[11px] font-medium text-rotary-gold-light">
+            Rotary in motion
+          </span>
+        </div>
+
         <div
           aria-hidden
-          className="pointer-events-none absolute -inset-5 rounded-[2.5rem] opacity-65 blur-2xl"
-          style={{
-            background:
-              "radial-gradient(50% 50% at 50% 50%, rgba(201,162,76,0.55), transparent 70%)",
-          }}
+          className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10"
         />
-
-        {/* Card — entire surface is tappable → opens fullscreen */}
-        <button
-          type="button"
-          onClick={openModal}
-          aria-label="Expand Rotary in motion video fullscreen"
-          className="group relative block w-full touch-manipulation overflow-hidden rounded-2xl shadow-[var(--shadow-gold)] ring-1 ring-rotary-gold/40 transition-transform duration-200 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rotary-gold focus-visible:ring-offset-2 focus-visible:ring-offset-navy"
-        >
-          {/* Square video — muted autoplay loop, matches source 1:1 ratio */}
-          <div className="aspect-square w-full bg-navy-800">
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              poster="/brand/rotary-hero-poster.jpg"
-              aria-hidden="true"
-              className="h-full w-full object-cover motion-reduce:hidden"
-            >
-              <source src="/brand/rotary-hero.mp4" type="video/mp4" />
-            </video>
-            {/* Reduced-motion: show poster instead of animated video */}
-            <div
-              aria-hidden
-              className="hidden h-full w-full bg-cover bg-center motion-reduce:block"
-              style={{ backgroundImage: "url('/brand/rotary-hero-poster.jpg')" }}
-            />
-          </div>
-
-          {/* Expand affordance — top-right corner pill */}
-          <div
-            aria-hidden
-            className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white/90 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/60 group-hover:scale-110"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-          </div>
-
-          {/* Caption — bottom-left */}
-          <div className="absolute bottom-3 left-3.5 flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-rotary-gold" />
-            <span className="text-[11px] font-medium text-rotary-gold-light">
-              Rotary in motion
-            </span>
-          </div>
-
-          {/* Inner ring polish */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10"
-          />
-        </button>
       </div>
+    </div>
+  );
+}
 
-      {/* ── Fullscreen modal ─────────────────────────────────────────────────── */}
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Rotary in motion — full video"
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm motion-reduce:backdrop-blur-none"
-          onClick={closeModal}
-        >
-          {/* Video container — stop propagation so clicking video doesn't close */}
-          <div
-            className="relative w-full max-w-md px-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <video
-              ref={modalVideoRef}
-              controls
-              playsInline
-              preload="auto"
-              poster="/brand/rotary-hero-poster.jpg"
-              className="w-full rounded-2xl shadow-2xl"
-            >
-              <source src="/brand/rotary-hero.mp4" type="video/mp4" />
-            </video>
-          </div>
+/**
+ * Desktop floating video card — used inside the absolute-positioned accent in
+ * the hero section on lg+ screens. Same audio behaviour as mobile.
+ */
+export function HeroVideoDesktopCard() {
+  const { videoRef, muted, toggleMute } = useVideoAudio("desktop");
 
-          {/* Close — 44×44 minimum touch target */}
-          <button
-            type="button"
-            onClick={closeModal}
-            aria-label="Close video"
-            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-colors duration-200 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-      )}
-    </>
+  return (
+    <div
+      data-hero-video
+      className="group relative overflow-hidden rounded-2xl shadow-[var(--shadow-gold)] ring-1 ring-rotary-gold/40 transition-transform duration-300 ease-out hover:-translate-y-1"
+    >
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        poster="/brand/rotary-hero-poster.jpg"
+        className="aspect-square w-full object-cover motion-reduce:hidden"
+      >
+        <source src="/brand/rotary-hero.mp4" type="video/mp4" />
+      </video>
+      <div
+        aria-hidden
+        className="hidden aspect-square w-full bg-cover bg-center motion-reduce:block"
+        style={{ backgroundImage: "url('/brand/rotary-hero-poster.jpg')" }}
+      />
+
+      <MuteButton muted={muted} onToggle={toggleMute} />
+
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10"
+      />
+    </div>
   );
 }
