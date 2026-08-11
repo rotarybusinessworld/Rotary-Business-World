@@ -4,6 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/frontend/site-header";
 import { BusinessCard } from "@/frontend/search/business-card";
+import { StartConversationButton } from "@/frontend/messages/start-conversation-button";
 import { Badge } from "@/frontend/ui/badge";
 import { buttonVariants } from "@/frontend/ui/button";
 import { requirePaid } from "@/backend/auth-helpers";
@@ -48,12 +49,15 @@ export default async function MemberProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requirePaid(`/member/${id}`);
+  const viewer = await requirePaid(`/member/${id}`);
 
   const member = await getMember(id);
   if (!member) notFound();
 
   const verified = member.status === "VERIFIED";
+  // Only verified members can DM, and only a verified member other than self.
+  const canMessage =
+    viewer.status === "VERIFIED" && viewer.id !== member.id && verified;
   const club = member.rotaryInfo?.club?.name;
   const district =
     member.rotaryInfo?.district?.code ?? member.rotaryInfo?.district?.name;
@@ -183,6 +187,16 @@ export default async function MemberProfilePage({
                 </span>
               )}
             </div>
+
+            {/* Message CTA */}
+            {canMessage && (
+              <div className="mt-4">
+                <StartConversationButton
+                  recipientId={member.id}
+                  variant="primary"
+                />
+              </div>
+            )}
 
             {/* Bio */}
             {member.profile?.bio && (

@@ -47,3 +47,9 @@ export const businessSchema = z.object({
   discountNote: z.string().max(120).optional().or(z.literal("")),
 });
 export type BusinessInput = z.infer<typeof businessSchema>;
+
+export const sendMessageSchema = z.object({
+  conversationId: z.string().min(1, "Missing conversation"),
+  body: z.string().trim().min(1, "Message can't be empty").max(4000),
+});
+export type SendMessageInput = z.infer<typeof sendMessageSchema>;

@@ -28,6 +28,16 @@ function useVideoAudio(side: "mobile" | "desktop") {
     const v = videoRef.current;
     if (!v) return;
 
+    // Under prefers-reduced-motion the <video> is hidden (motion-reduce:hidden)
+    // and only the poster shows — so never play it or its audio, and don't
+    // attach gesture listeners. Otherwise audio would come from an invisible
+    // element whose mute button is also hidden.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      v.muted = true;
+      setMuted(true);
+      return;
+    }
+
     const mq = window.matchMedia("(min-width: 1024px)");
     const isActiveSide = () => (side === "desktop" ? mq.matches : !mq.matches);
 

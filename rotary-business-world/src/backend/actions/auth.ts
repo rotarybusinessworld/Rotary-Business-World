@@ -58,10 +58,17 @@ export async function loginAction(
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  // Safe relative-URL redirect: only honour paths that start with `/`
+  // Safe relative-URL redirect: only honour same-origin paths. Reject
+  // protocol-relative (`//evil.com`) and backslash (`/\evil.com`) forms that
+  // pass a naive startsWith("/") check but navigate off-origin.
   const rawNext = formData.get("next");
   const next =
-    typeof rawNext === "string" && rawNext.startsWith("/") ? rawNext : null;
+    typeof rawNext === "string" &&
+    rawNext.startsWith("/") &&
+    !rawNext.startsWith("//") &&
+    !rawNext.startsWith("/\\")
+      ? rawNext
+      : null;
 
   try {
     await signIn("credentials", {

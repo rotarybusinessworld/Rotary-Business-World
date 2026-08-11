@@ -18,6 +18,8 @@ export async function requireUser(callbackUrl?: string) {
  */
 export async function requirePaid(callbackUrl?: string) {
   const user = await requireUser(callbackUrl);
+  // Admins don't pay the membership fee — exempt them (also skips a DB read).
+  if (user.role === "SUPER_ADMIN" || user.role === "CLUB_ADMIN") return user;
   const record = await db.user.findUnique({
     where: { id: user.id },
     select: { hasPaid: true },
@@ -27,8 +29,8 @@ export async function requirePaid(callbackUrl?: string) {
 }
 
 /** Require a VERIFIED user who has paid; unverified users go to dashboard. */
-export async function requireVerified() {
-  const user = await requirePaid();
+export async function requireVerified(callbackUrl?: string) {
+  const user = await requirePaid(callbackUrl);
   if (user.status !== "VERIFIED") redirect("/dashboard");
   return user;
 }
@@ -70,5 +72,10 @@ export async function getAdminScope(): Promise<AdminScope> {
     select: { managedDistrictId: true },
   });
 
-  return { user, managedDistrictId: record?.managedDistrictId ?? null };
+  const managedDistrictId = record?.managedDistrictId ?? null;
+  // Fail closed: a CLUB_ADMIN with no district (e.g. district deleted via
+  // ON DELETE SET NULL) must NOT fall through to unscoped SUPER_ADMIN access.
+  if (!managedDistrictId) redirect("/dashboard");
+
+  return { user, managedDistrictId };
 }

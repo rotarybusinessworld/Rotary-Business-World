@@ -18,27 +18,33 @@ export default async function PaymentSuccessPage({
   const sp = await searchParams;
   const sessionId = sp.session_id;
 
+  // Only a verified Stripe Checkout Session grants access here. The demo path
+  // never reaches this page (it redirects straight to /dashboard), so if Stripe
+  // isn't configured there is nothing to verify — bounce back rather than
+  // marking the user paid (which would be a free-access hole in production).
   const secret = process.env.STRIPE_SECRET_KEY;
-  if (secret && sessionId) {
-    const stripe = new Stripe(secret);
-    const checkout = await stripe.checkout.sessions.retrieve(sessionId);
-
-    if (
-      checkout.payment_status === "paid" &&
-      checkout.metadata?.userId === user.id
-    ) {
-      await markUserPaid(user.id);
-    } else {
-      // Payment not verified — send them back
-      redirect("/onboarding/payment");
-    }
-  } else if (!secret) {
-    // Demo mode: should have already been marked paid by server action.
-    // If somehow we land here, just mark paid.
-    await markUserPaid(user.id);
-  } else {
+  if (!secret || !sessionId) {
     redirect("/onboarding/payment");
   }
+
+  const stripe = new Stripe(secret);
+  let checkout: Stripe.Checkout.Session | null = null;
+  try {
+    checkout = await stripe.checkout.sessions.retrieve(sessionId);
+  } catch {
+    // Stale, malformed, or tampered session_id — don't 500, just bounce.
+    checkout = null;
+  }
+
+  if (
+    !checkout ||
+    checkout.payment_status !== "paid" ||
+    checkout.metadata?.userId !== user.id
+  ) {
+    redirect("/onboarding/payment");
+  }
+
+  await markUserPaid(user.id);
 
   return (
     <>

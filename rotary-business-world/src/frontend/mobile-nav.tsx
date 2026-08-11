@@ -2,17 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, LogOut, Menu, Search, ShieldCheck, X } from "lucide-react";
+import {
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  MessageCircle,
+  Search,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 
 export function MobileNav({
   isAuthed,
   isAdmin,
+  canMessage = false,
+  unread = 0,
   userInitial,
   userName,
   signOutAction,
 }: {
   isAuthed: boolean;
   isAdmin: boolean;
+  canMessage?: boolean;
+  unread?: number;
   userInitial?: string;
   userName?: string;
   signOutAction: () => Promise<void>;
@@ -98,6 +110,22 @@ export function MobileNav({
                   >
                     <LayoutDashboard className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
                     Dashboard
+                  </Link>
+                )}
+
+                {canMessage && (
+                  <Link
+                    href="/messages"
+                    onClick={close}
+                    className="group flex min-h-[48px] items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
+                  >
+                    <MessageCircle className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
+                    Messages
+                    {unread > 0 && (
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rotary-gold px-1.5 text-[11px] font-bold text-secondary-foreground">
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    )}
                   </Link>
                 )}
 

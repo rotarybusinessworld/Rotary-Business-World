@@ -45,6 +45,7 @@ async function main() {
     data: {
       role: districtCode ? "CLUB_ADMIN" : "SUPER_ADMIN",
       status: "VERIFIED",
+      hasPaid: true,
       managedDistrictId,
     },
   });

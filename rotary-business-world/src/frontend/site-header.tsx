@@ -2,15 +2,18 @@ import Link from "next/link";
 import { auth, signOut } from "@/backend/auth";
 import { Logo } from "@/frontend/brand/logo";
 import { MobileNav } from "@/frontend/mobile-nav";
-import { LayoutDashboard, Search, ShieldCheck } from "lucide-react";
+import * as messaging from "@/backend/messaging";
+import { LayoutDashboard, MessageCircle, Search, ShieldCheck } from "lucide-react";
 
 const navLink =
-  "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-white/65 transition-colors duration-150 hover:bg-white/[0.07] hover:text-white";
+  "relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-white/65 transition-colors duration-150 hover:bg-white/[0.07] hover:text-white";
 
 export async function SiteHeader() {
   const session = await auth();
   const user = session?.user;
   const isAdmin = user?.role === "SUPER_ADMIN" || user?.role === "CLUB_ADMIN";
+  const canMessage = user?.status === "VERIFIED";
+  const unread = canMessage ? await messaging.countUnread(user) : 0;
   const userInitial =
     (user?.name ?? user?.email ?? "?").charAt(0).toUpperCase();
 
@@ -42,6 +45,17 @@ export async function SiteHeader() {
             <Link href="/dashboard" className={navLink}>
               <LayoutDashboard className="h-3.5 w-3.5" />
               Dashboard
+            </Link>
+          )}
+          {canMessage && (
+            <Link href="/messages" className={navLink}>
+              <MessageCircle className="h-3.5 w-3.5" />
+              Messages
+              {unread > 0 && (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rotary-gold px-1 text-[10px] font-bold text-secondary-foreground">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
             </Link>
           )}
           {isAdmin && (
@@ -102,6 +116,8 @@ export async function SiteHeader() {
           <MobileNav
             isAuthed={!!user}
             isAdmin={isAdmin}
+            canMessage={canMessage}
+            unread={unread}
             userInitial={user ? userInitial : undefined}
             userName={user?.name ?? user?.email ?? undefined}
             signOutAction={signOutAction}

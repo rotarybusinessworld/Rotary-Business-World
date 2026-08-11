@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/frontend/site-header";
 import { BusinessCard } from "@/frontend/search/business-card";
 import { BusinessGallery } from "@/frontend/business/business-gallery";
+import { StartConversationButton } from "@/frontend/messages/start-conversation-button";
 import { Badge } from "@/frontend/ui/badge";
 import { Card, CardContent } from "@/frontend/ui/card";
 import { buttonVariants } from "@/frontend/ui/button";
@@ -500,9 +501,19 @@ export default async function BusinessDetailPage({
                   </div>
                 </Link>
 
+                {!isOwner && viewer.status === "VERIFIED" && ownerVerified && (
+                  <StartConversationButton
+                    recipientId={business.ownerId}
+                    label="Message owner"
+                    variant="outline"
+                    size="sm"
+                    className="mt-4 w-full"
+                  />
+                )}
+
                 <Link
                   href={`/member/${business.ownerId}`}
-                  className="mt-4 block text-xs font-medium text-primary hover:underline"
+                  className="mt-3 block text-xs font-medium text-primary hover:underline"
                 >
                   View profile →
                 </Link>
