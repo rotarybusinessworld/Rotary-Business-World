@@ -53,3 +53,11 @@ export const sendMessageSchema = z.object({
   body: z.string().trim().min(1, "Message can't be empty").max(4000),
 });
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
+
+export const createDistrictAdminSchema = z.object({
+  fullName: z.string().min(2, "Enter the admin's full name").max(120),
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(8, "Use at least 8 characters").max(200),
+  districtId: z.string().min(1, "Select a district"),
+});
+export type CreateDistrictAdminInput = z.infer<typeof createDistrictAdminSchema>;

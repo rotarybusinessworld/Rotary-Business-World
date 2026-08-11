@@ -1,0 +1,190 @@
+import "server-only";
+import { db } from "@/backend/db";
+import { assertSuperAdmin, type Actor } from "@/backend/actor";
+import { hashPassword } from "@/backend/password";
+import { auditCreate } from "@/backend/audit";
+import { ConflictError, NotFoundError } from "@/backend/errors";
+
+/**
+ * Management (SUPER_ADMIN) operations for district admins — the in-app
+ * equivalent of `scripts/make-admin.ts`. A "district admin" is a
+ * `role = CLUB_ADMIN` user with `managedDistrictId` set.
+ *
+ * Transport-agnostic like the other services: `Actor` first, `assertSuperAdmin`,
+ * throw `AppError` on failure, wrap each mutation + its audit row in one
+ * `db.$transaction`.
+ */
+
+export type DistrictAdminSummary = {
+  id: string;
+  email: string;
+  fullName: string | null;
+};
+
+export type DistrictWithAdmins = {
+  id: string;
+  code: string;
+  name: string | null;
+  country: string | null;
+  admins: DistrictAdminSummary[];
+};
+
+/** Every district with its current district admins, for the management overview. */
+export async function listDistrictsWithAdmins(
+  actor: Actor,
+): Promise<DistrictWithAdmins[]> {
+  assertSuperAdmin(actor);
+
+  const districts = await db.district.findMany({
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      country: true,
+      admins: {
+        where: { role: "CLUB_ADMIN" },
+        select: {
+          id: true,
+          email: true,
+          profile: { select: { fullName: true } },
+        },
+        orderBy: { email: "asc" },
+      },
+    },
+    orderBy: [{ country: "asc" }, { code: "asc" }],
+  });
+
+  return districts.map((d) => ({
+    id: d.id,
+    code: d.code,
+    name: d.name,
+    country: d.country,
+    admins: d.admins.map((a) => ({
+      id: a.id,
+      email: a.email,
+      fullName: a.profile?.fullName ?? null,
+    })),
+  }));
+}
+
+/** Create a brand-new district-admin account, verified and scoped to a district. */
+export async function createDistrictAdmin(
+  actor: Actor,
+  input: { fullName: string; email: string; password: string; districtId: string },
+): Promise<{ id: string }> {
+  const admin = assertSuperAdmin(actor);
+  const email = input.email.toLowerCase();
+
+  const district = await db.district.findUnique({
+    where: { id: input.districtId },
+    select: { id: true, code: true },
+  });
+  if (!district) throw new NotFoundError("District not found");
+
+  const existing = await db.user.findUnique({ where: { email } });
+  if (existing) {
+    throw new ConflictError("An account with this email already exists", {
+      email: ["An account with this email already exists"],
+    });
+  }
+
+  const passwordHash = await hashPassword(input.password);
+
+  // Interactive transaction so the audit row can reference the new user's id.
+  const created = await db.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: "CLUB_ADMIN",
+        status: "VERIFIED",
+        hasPaid: true,
+        managedDistrictId: district.id,
+        profile: { create: { fullName: input.fullName } },
+      },
+      select: { id: true },
+    });
+    await auditCreate(tx, {
+      actorId: admin.id,
+      action: "admin.district_admin_created",
+      targetType: "User",
+      targetId: user.id,
+      metadata: {
+        email,
+        fullName: input.fullName,
+        districtId: district.id,
+        districtCode: district.code,
+      },
+    });
+    return user;
+  });
+
+  return { id: created.id };
+}
+
+/** Demote a district admin back to a plain member and unassign their district. */
+export async function revokeDistrictAdmin(
+  actor: Actor,
+  userId: string,
+): Promise<void> {
+  const admin = assertSuperAdmin(actor);
+
+  const target = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, managedDistrictId: true },
+  });
+  if (!target || target.role !== "CLUB_ADMIN") {
+    throw new NotFoundError("District admin not found");
+  }
+
+  await db.$transaction([
+    db.user.update({
+      where: { id: userId },
+      data: { role: "MEMBER", managedDistrictId: null },
+    }),
+    auditCreate(db, {
+      actorId: admin.id,
+      action: "admin.district_admin_revoked",
+      targetType: "User",
+      targetId: userId,
+      metadata: { priorDistrictId: target.managedDistrictId },
+    }),
+  ]);
+}
+
+/** Move a district admin to a different district. */
+export async function reassignDistrictAdmin(
+  actor: Actor,
+  userId: string,
+  districtId: string,
+): Promise<void> {
+  const admin = assertSuperAdmin(actor);
+
+  const target = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, managedDistrictId: true },
+  });
+  if (!target || target.role !== "CLUB_ADMIN") {
+    throw new NotFoundError("District admin not found");
+  }
+
+  const district = await db.district.findUnique({
+    where: { id: districtId },
+    select: { id: true },
+  });
+  if (!district) throw new NotFoundError("District not found");
+
+  await db.$transaction([
+    db.user.update({
+      where: { id: userId },
+      data: { managedDistrictId: district.id },
+    }),
+    auditCreate(db, {
+      actorId: admin.id,
+      action: "admin.district_admin_reassigned",
+      targetType: "User",
+      targetId: userId,
+      metadata: { fromDistrictId: target.managedDistrictId, toDistrictId: district.id },
+    }),
+  ]);
+}

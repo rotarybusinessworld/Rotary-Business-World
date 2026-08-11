@@ -1,0 +1,108 @@
+name: CI
+
+# Runs on every push to main and on every pull request. The three blocking
+# jobs (build, migrations) must pass before a change reaches Railway; they
+# reproduce, without a live database, the failures that previously only showed
+# up as broken deploys (missing prisma client, DB reached at build time, etc.).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same branch/PR so pushes don't pile up.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# The Next.js app lives in a subfolder; the repo root has no package.json.
+defaults:
+  run:
+    working-directory: rotary-business-world
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Blocking gate: types must be sound and the production build must succeed
+  # WITHOUT a database. Pages that query the DB are dynamic (rendered at request
+  # time), so a dummy DATABASE_URL is enough for Prisma Client to instantiate.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Typecheck · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rotary-business-world/package-lock.json
+      # `npm ci` fails if package-lock.json is out of sync — catches lockfile drift.
+      - run: npm ci
+      # Prisma Client must exist before tsc/next: both consume its generated types.
+      - run: npm run prisma:generate
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          # Not a real DB. The build must never connect; if this ever fails
+          # because something reaches the DB at build time, make that page
+          # `export const dynamic = "force-dynamic"` instead of loosening this.
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:1/ci
+
+  # ---------------------------------------------------------------------------
+  # Blocking gate: the full production DB-setup path must apply cleanly to an
+  # EMPTY database. This is the same sequence Railway's Pre-Deploy + first-run
+  # perform (npm run db:setup = migrate deploy + search SQL + seed). It catches
+  # migration drift, broken raw SQL, and bad seed data before they hit prod.
+  # ---------------------------------------------------------------------------
+  migrations:
+    name: Migrations · Search SQL · Seed (fresh DB)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rbw
+          POSTGRES_PASSWORD: rbw
+          POSTGRES_DB: rbw
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rbw"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://rbw:rbw@127.0.0.1:5432/rbw?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rotary-business-world/package-lock.json
+      - run: npm ci
+      - run: npm run prisma:generate
+      # The seed script reads --env-file=.env, so materialize one for CI.
+      - name: Write .env for seed
+        run: echo "DATABASE_URL=${DATABASE_URL}" > .env
+      # Exactly the production first-run command: migrate deploy + search + seed.
+      - run: npm run db:setup
+
+  # ---------------------------------------------------------------------------
+  # Non-blocking (for now): the codebase has pre-existing lint errors. This job
+  # surfaces them on every PR without blocking merges. Once the existing errors
+  # are fixed, remove `continue-on-error` to make lint a required gate too.
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rotary-business-world/package-lock.json
+      - run: npm ci
+      - run: npm run prisma:generate
+      - run: npm run lint

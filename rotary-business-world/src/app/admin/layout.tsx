@@ -8,7 +8,8 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireAdmin();
+  const user = await requireAdmin();
+  const isSuperAdmin = user.role === "SUPER_ADMIN";
   return (
     <>
       <SiteHeader />
@@ -24,6 +25,14 @@ export default async function AdminLayout({
             >
               Verification queue
             </Link>
+            {isSuperAdmin && (
+              <Link
+                href="/admin/districts"
+                className="rounded-full px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                District admins
+              </Link>
+            )}
           </nav>
         </div>
       </div>

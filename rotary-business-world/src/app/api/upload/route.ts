@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/backend/auth";
 import { getStorageService } from "@/backend/storage";
+import { logger } from "@/backend/logger";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED: Record<string, string> = {
@@ -37,11 +38,21 @@ export async function POST(request: Request) {
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const { url } = await getStorageService().put({
-    folder,
-    bytes,
-    contentType: file.type,
-    ext,
-  });
-  return NextResponse.json({ url });
+  try {
+    const { url } = await getStorageService().put({
+      folder,
+      bytes,
+      contentType: file.type,
+      ext,
+    });
+    return NextResponse.json({ url });
+  } catch (err) {
+    // S3 down / bad creds / bucket policy — degrade to a clean 502 the client can
+    // show as "upload failed", never an unhandled 500 / Internal Server Error.
+    logger.error({ err, folder }, "image upload failed");
+    return NextResponse.json(
+      { error: "Upload failed. Please try again later." },
+      { status: 502 },
+    );
+  }
 }
