@@ -10,6 +10,7 @@ import { buttonVariants } from "@/frontend/ui/button";
 import { requirePaid } from "@/backend/auth-helpers";
 import { db } from "@/backend/db";
 import type { BusinessHit } from "@/backend/search/types";
+import { toImageSrc } from "@/shared/image";
 import {
   AtSign,
   BadgeCheck,
@@ -141,7 +142,7 @@ export default async function MemberProfilePage({
             <div className="relative z-10 -mt-12 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-card ring-4 ring-card shadow-[var(--shadow-card)]">
               {member.profile?.photoUrl ? (
                 <Image
-                  src={member.profile.photoUrl}
+                  src={toImageSrc(member.profile.photoUrl)!}
                   alt={fullName}
                   width={96}
                   height={96}
