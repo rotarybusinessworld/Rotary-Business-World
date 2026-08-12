@@ -41,18 +41,19 @@ export function CreateDistrictForm() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div>
-          <Label htmlFor="dist-code">District code</Label>
-          <Input
-            id="dist-code"
-            name="code"
-            required
-            autoComplete="off"
-            placeholder="e.g. 3201"
-          />
-          <FieldError messages={state.fieldErrors?.code} />
-        </div>
+      <div>
+        <Label htmlFor="dist-code">District code</Label>
+        <Input
+          id="dist-code"
+          name="code"
+          required
+          autoComplete="off"
+          placeholder="e.g. 3201"
+        />
+        <FieldError messages={state.fieldErrors?.code} />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="dist-name">Name (optional)</Label>
           <Input

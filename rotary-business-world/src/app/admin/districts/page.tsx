@@ -53,9 +53,9 @@ export default async function DistrictsPage() {
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Add new
         </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid items-stretch gap-4 sm:grid-cols-3">
           {/* New district */}
-          <Card>
+          <Card className="flex h-full flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted">
@@ -64,13 +64,13 @@ export default async function DistrictsPage() {
                 New district
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
               <CreateDistrictForm />
             </CardContent>
           </Card>
 
           {/* New club */}
-          <Card>
+          <Card className="flex h-full flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted">
@@ -79,13 +79,13 @@ export default async function DistrictsPage() {
                 New club
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
               <CreateClubForm districts={districtOptions} />
             </CardContent>
           </Card>
 
           {/* New admin */}
-          <Card>
+          <Card className="flex h-full flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted">
@@ -94,7 +94,7 @@ export default async function DistrictsPage() {
                 New district admin
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
               <CreateAdminForm districts={districtOptions} />
             </CardContent>
           </Card>
@@ -155,9 +155,10 @@ export default async function DistrictsPage() {
                       {d.admins.length === 0 ? (
                         <span className="text-xs text-muted-foreground">None assigned</span>
                       ) : (
-                        <ul className="space-y-2">
+                        <ul className="space-y-3">
                           {d.admins.map((a) => (
-                            <li key={a.id} className="flex flex-wrap items-center gap-2">
+                            <li key={a.id} className="flex flex-col gap-2">
+                              {/* Identity row */}
                               <div className="flex items-center gap-2">
                                 <Avatar name={a.fullName ?? a.email} size={24} />
                                 <div className="min-w-0">
@@ -169,6 +170,7 @@ export default async function DistrictsPage() {
                                   </p>
                                 </div>
                               </div>
+                              {/* Actions row */}
                               <div className="flex items-center gap-1.5">
                                 <form
                                   action={reassignDistrictAdminAction}
@@ -178,7 +180,7 @@ export default async function DistrictsPage() {
                                   <Select
                                     name="districtId"
                                     defaultValue={d.id}
-                                    className="h-7 w-auto text-[11px]"
+                                    className="h-7 max-w-[130px] text-[11px]"
                                     aria-label="Move to district"
                                   >
                                     {districtOptions.map((o) => (
