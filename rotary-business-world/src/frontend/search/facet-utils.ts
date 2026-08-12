@@ -29,9 +29,9 @@ export function clearFiltersHref(current: FacetCurrent): string {
     : "/directory";
 }
 
-/** Number of active facet filters (industry, country, city). */
+/** Number of active facet filters (industry, category, country, city). */
 export function activeFilterCount(current: FacetCurrent): number {
-  return (["industry", "country", "city"] as const).filter(
+  return (["industry", "category", "country", "city"] as const).filter(
     (k) => !!current[k],
   ).length;
 }
@@ -40,7 +40,7 @@ export function activeFilterCount(current: FacetCurrent): number {
 export function activeFilterChips(
   current: FacetCurrent,
 ): { key: string; label: string; href: string }[] {
-  return (["industry", "country", "city"] as const)
+  return (["industry", "category", "country", "city"] as const)
     .filter((k) => !!current[k])
     .map((key) => ({
       key,

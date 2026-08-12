@@ -247,9 +247,11 @@ model Business {
   images  BusinessImage[]
   reviews Review[]
 
-  // Declared so Prisma is aware of the column and never DROPs it. The column is
-  // turned into a STORED generated column by a hand-edited migration; Prisma
-  // treats it as an opaque tsvector it should keep.
+  // searchVector and searchText are both GENERATED ALWAYS ... STORED columns
+  // managed by prisma/sql/search.sql (npm run db:search). Declaring them here
+  // as Unsupported prevents Prisma from touching or dropping them on migrate.
+  // searchVector: weighted tsvector for full-text search (@@).
+  // searchText:   concatenated plain text for trigram / word-similarity (<%  %).
   searchVector Unsupported("tsvector")?
 
   @@index([industryId])

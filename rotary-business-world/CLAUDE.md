@@ -159,11 +159,13 @@ instance**, add Postgres connection pooling (Railway pooler / PgBouncer / Prisma
 
 ## Architecture notes
 
-- **Search vector** (`Business.searchVector`) is a plain `tsvector` kept in sync by the
-  `business_search_vector_trigger` (see the init migration), NOT a generated column — a
-  generated column makes Prisma emit a spurious `ALTER COLUMN ... DROP DEFAULT` every migrate.
-  It's declared `Unsupported("tsvector")?` so Prisma leaves it alone. Denormalized
-  `industryName`/`categoryName` on `Business` feed the vector (set on every business write).
+- **Search vector** (`Business.searchVector`) is a `GENERATED ALWAYS … STORED` tsvector managed
+  by `prisma/sql/search.sql` (applied via `npm run db:search`). Declared `Unsupported("tsvector")?`
+  so Prisma treats it as opaque and never touches it. The old `business_search_vector_trigger` that
+  wrote to this column has been removed — it conflicted with the generated column and caused every
+  business INSERT/UPDATE to throw. **`Business.searchText`** is a second generated text column
+  (also managed by `search.sql`) that concatenates all searchable fields and backs a GIN trigram
+  index for multi-field fuzzy / word-similarity matching.
 - **Verification** (`backend/verification.ts`): exact Rotary-ID match → VERIFIED; strong fuzzy
   name match in the same district → VERIFIED; otherwise PENDING + a `VerificationRequest`
   (admin queue). PENDING users can log in and browse, but listing tools are gated.

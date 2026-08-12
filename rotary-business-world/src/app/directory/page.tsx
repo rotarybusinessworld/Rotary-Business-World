@@ -33,19 +33,24 @@ export default async function DirectoryPage({
   const sp = await searchParams;
   const q = first(sp.q);
   const industry = first(sp.industry);
+  const category = first(sp.category);
   const country = first(sp.country);
   const city = first(sp.city);
   const page = Number(first(sp.page) ?? "1") || 1;
+  // "Search instead for <original>" link sets force=1 to bypass did-you-mean.
+  const forceOriginal = first(sp.force) === "1";
 
   const result = await getSearchService().search({
     q,
     industry,
+    category,
     country,
     city,
     page,
+    forceOriginal,
   });
 
-  const current = { q, industry, country, city };
+  const current = { q, industry, category, country, city };
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
   const filterCount = activeFilterCount(current);
 
@@ -72,6 +77,23 @@ export default async function DirectoryPage({
 
           {/* ── CENTER: Results feed ───────────────────────────────── */}
           <section>
+            {/* Did-you-mean banner */}
+            {result.didYouMean && (
+              <div className="mb-3 rounded-[var(--radius)] border border-border bg-muted/50 px-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">Showing results for </span>
+                <span className="font-medium text-foreground">
+                  &ldquo;{result.didYouMean.corrected}&rdquo;
+                </span>
+                <span className="text-muted-foreground"> — search instead for </span>
+                <Link
+                  href={`/directory?q=${encodeURIComponent(result.didYouMean.original)}&force=1`}
+                  className="font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  &ldquo;{result.didYouMean.original}&rdquo;
+                </Link>
+              </div>
+            )}
+
             {/* Feed header */}
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <p className="text-sm text-muted-foreground">
@@ -79,12 +101,12 @@ export default async function DirectoryPage({
                   {result.total}
                 </span>{" "}
                 {result.total === 1 ? "business" : "businesses"}
-                {q ? (
+                {(result.didYouMean?.corrected ?? q) ? (
                   <>
                     {" "}
                     for{" "}
                     <span className="font-medium text-foreground">
-                      &ldquo;{q}&rdquo;
+                      &ldquo;{result.didYouMean?.corrected ?? q}&rdquo;
                     </span>
                   </>
                 ) : null}

@@ -1,62 +1,115 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { MapPin, Search, Tag, X } from "lucide-react";
+import { cn } from "@/shared/utils";
+import type { Suggestion } from "@/backend/search/types";
+import { useSearchSuggest } from "./use-search-suggest";
+
+/** Bold the matched substring in a suggestion label. */
+function Highlight({ label, query }: { label: string; query: string }) {
+  const idx = label.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{label}</>;
+  return (
+    <>
+      {label.slice(0, idx)}
+      <span className="font-semibold text-foreground">
+        {label.slice(idx, idx + query.length)}
+      </span>
+      {label.slice(idx + query.length)}
+    </>
+  );
+}
+
+const TYPE_ICON: Record<Suggestion["type"], React.ElementType> = {
+  business: Search,
+  industry: Tag,
+  category: Tag,
+  city: MapPin,
+};
+
+const TYPE_LABEL: Record<Suggestion["type"], string> = {
+  business: "Business",
+  industry: "Industry",
+  category: "Category",
+  city: "City",
+};
 
 /** Directory search box with debounced typeahead suggestions. */
 export function SearchBar() {
   const router = useRouter();
   const params = useSearchParams();
   const [value, setValue] = useState(params.get("q") ?? "");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
+  const [open2, setOpen2] = useState(false);
+
   const boxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Keep input in sync when navigating (e.g. facet clicks).
   useEffect(() => {
     setValue(params.get("q") ?? "");
   }, [params]);
 
-  // Debounced suggestions.
-  useEffect(() => {
-    const q = value.trim();
-    if (q.length < 2) {
-      setSuggestions([]);
-      return;
+  function navigate(s: Suggestion) {
+    const next = new URLSearchParams(params.toString());
+    next.delete("page");
+    switch (s.type) {
+      case "business":
+        next.set("q", s.label);
+        break;
+      case "industry":
+        next.delete("q");
+        next.set("industry", s.label);
+        break;
+      case "category":
+        next.delete("q");
+        next.set("category", s.label);
+        break;
+      case "city":
+        next.delete("q");
+        next.set("city", s.label);
+        break;
     }
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(q)}`);
-        if (res.ok) {
-          const data = (await res.json()) as { label: string }[];
-          setSuggestions(data.map((d) => d.label));
-        }
-      } catch {
-        /* ignore */
-      }
-    }, 180);
-    return () => clearTimeout(t);
-  }, [value]);
-
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
+    router.push(`/directory?${next.toString()}`);
+  }
 
   function submit(q: string) {
     const next = new URLSearchParams(params.toString());
     if (q.trim()) next.set("q", q.trim());
     else next.delete("q");
     next.delete("page");
-    setOpen(false);
     router.push(`/directory?${next.toString()}`);
   }
+
+  const { suggestions, open, setOpen, selectedIndex, handleKeyDown } =
+    useSearchSuggest({ value, onSelect: navigate });
+
+  // Merge external open state: open=hook state, open2=local "was focused" state.
+  const isOpen = (open || open2) && suggestions.length > 0;
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setOpen2(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [setOpen]);
+
+  // Group suggestions by type while preserving relevance order.
+  const grouped = suggestions.reduce<
+    { type: Suggestion["type"]; items: Suggestion[] }[]
+  >((acc, s) => {
+    const existing = acc.find((g) => g.type === s.type);
+    if (existing) existing.items.push(s);
+    else acc.push({ type: s.type, items: [s] });
+    return acc;
+  }, []);
+
+  let listOffset = 0;
 
   return (
     <div ref={boxRef} className="relative">
@@ -64,20 +117,26 @@ export function SearchBar() {
         onSubmit={(e) => {
           e.preventDefault();
           submit(value);
+          setOpen(false);
+          setOpen2(false);
         }}
         className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5 shadow-[var(--shadow-card)] transition-[box-shadow,border-color] duration-200 focus-within:border-primary/40 focus-within:shadow-[var(--shadow-pop)]"
       >
         <div className="flex flex-1 items-center gap-2 pl-3">
           <Search className="h-5 w-5 text-muted-foreground" />
           <input
+            ref={inputRef}
             value={value}
             onChange={(e) => {
               setValue(e.target.value);
-              setOpen(true);
+              setOpen2(true);
             }}
-            onFocus={() => setOpen(true)}
+            onFocus={() => setOpen2(true)}
+            onKeyDown={handleKeyDown}
             placeholder="Search businesses, industries, cities…"
             aria-label="Search the directory"
+            aria-autocomplete="list"
+            aria-expanded={isOpen}
             className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           {value && (
@@ -86,6 +145,8 @@ export function SearchBar() {
               onClick={() => {
                 setValue("");
                 submit("");
+                setOpen(false);
+                setOpen2(false);
               }}
               aria-label="Clear search"
             >
@@ -101,23 +162,51 @@ export function SearchBar() {
         </button>
       </form>
 
-      {open && suggestions.length > 0 && (
-        <ul className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-[var(--shadow-pop)]">
-          {suggestions.map((s) => (
-            <li key={s}>
-              <button
-                type="button"
-                onClick={() => {
-                  setValue(s);
-                  submit(s);
-                }}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm hover:bg-muted"
-              >
-                <Search className="h-3.5 w-3.5 text-muted-foreground" />
-                {s}
-              </button>
-            </li>
-          ))}
+      {/* Suggestions dropdown — grouped by type */}
+      {isOpen && (
+        <ul
+          role="listbox"
+          className={cn(
+            "absolute z-30 mt-1.5 w-full overflow-hidden rounded-[var(--radius)]",
+            "border border-border bg-card shadow-[var(--shadow-pop)]",
+          )}
+        >
+          {grouped.map(({ type, items }) => {
+            const Icon = TYPE_ICON[type];
+            const groupStart = listOffset;
+            listOffset += items.length;
+            return (
+              <li key={type}>
+                {/* Group header */}
+                <div className="flex items-center gap-1.5 px-4 pb-0.5 pt-2.5">
+                  <Icon className="h-3 w-3 text-muted-foreground/50" aria-hidden />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    {TYPE_LABEL[type]}s
+                  </span>
+                </div>
+                <ul>
+                  {items.map((s, i) => {
+                    const flatIdx = groupStart + i;
+                    return (
+                      <li key={s.label} role="option" aria-selected={flatIdx === selectedIndex}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(s)}
+                          className={cn(
+                            "flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground",
+                            flatIdx === selectedIndex && "bg-muted text-foreground",
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                          <Highlight label={s.label} query={value} />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

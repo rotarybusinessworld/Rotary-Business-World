@@ -71,7 +71,7 @@ export function FacetSidebar({
   facets: { industry: Facet[]; country: Facet[] };
   current: FacetCurrent;
 }) {
-  const hasFilters = current.industry || current.country || current.city;
+  const hasFilters = current.industry || current.category || current.country || current.city;
 
   return (
     <div className="rounded-[var(--radius)] border border-border bg-card shadow-[var(--shadow-card)]">

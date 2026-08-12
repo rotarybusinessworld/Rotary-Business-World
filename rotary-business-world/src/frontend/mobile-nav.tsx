@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { Avatar } from "@/frontend/ui/avatar";
+import { useMobileNav } from "@/frontend/mobile-nav-context";
 
 export function MobileNav({
   isAuthed,
@@ -38,15 +39,26 @@ export function MobileNav({
   photoUrl?: string | null;
   signOutAction: () => Promise<void>;
 }) {
-  const [open, setOpen] = useState(false);
-  const close = () => setOpen(false);
+  const { active, setActive } = useMobileNav();
+  const open = active === "menu";
+  const close = () => setActive(null);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") close();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   return (
     <div className="md:hidden">
       {/* Trigger — avatar when signed in, hamburger when signed out */}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setActive(open ? null : "menu")}
         aria-expanded={open}
         aria-label={open ? "Close menu" : "Open menu"}
         className={
@@ -69,13 +81,15 @@ export function MobileNav({
 
       {open && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop — h-[100dvh] not bottom-0: the header's backdrop-blur makes
+              it the containing block for this fixed element, so bottom-0 would
+              resolve to the 68px header bottom (zero-height, un-tappable). */}
           <button
             type="button"
             aria-hidden="true"
             tabIndex={-1}
             onClick={close}
-            className="fixed inset-x-0 bottom-0 top-[68px] z-40 bg-navy/70 backdrop-blur-[3px]"
+            className="fixed inset-x-0 top-[68px] z-40 h-[100dvh] bg-navy/70 backdrop-blur-[3px]"
           />
 
           {/* Slide-down panel */}
