@@ -64,6 +64,16 @@ export function PaymentClient({
         order_id: order.orderId,
         prefill: { name: order.userName, email: order.userEmail },
         theme: { color: "#c9a24c" },
+        // Explicitly list payment methods so UPI always appears even when the
+        // dashboard default omits it in test mode.
+        method: {
+          upi: true,
+          card: true,
+          netbanking: true,
+          wallet: true,
+          emi: false,
+          paylater: false,
+        },
         modal: {
           ondismiss() {
             setLoading(false);
