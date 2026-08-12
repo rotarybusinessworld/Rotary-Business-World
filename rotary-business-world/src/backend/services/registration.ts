@@ -50,27 +50,19 @@ export async function registerMember(
     throw new NotFoundError("Selected district not found — please choose again");
   }
 
-  // Decide verification status by matching the official roster.
+  // Run the roster check to capture match score + reason for the admin queue.
+  // Every member registers as PENDING regardless of the outcome — only a district
+  // admin can grant VERIFIED via /admin/verifications (pillars 1 & 2).
   const outcome = await verifyAgainstRoster({
     rotaryId: input.rotaryId,
     fullName: input.fullName,
     districtCode: district.code,
   });
 
-  // Guard against one roster identity being claimed by multiple verified
-  // accounts (impersonation / duplicates). Enforced at the DB level via @@unique.
-  if (outcome.status === "VERIFIED" && outcome.rosterMemberId) {
-    const alreadyClaimed = await db.rotaryInfo.findFirst({
-      where: { matchedRosterId: outcome.rosterMemberId },
-    });
-    if (alreadyClaimed) {
-      throw new ConflictError("This Rotary ID is already registered", {
-        rotaryId: [
-          "This Rotary ID is already registered. If this is you, log in or contact support.",
-        ],
-      });
-    }
-  }
+  // Note: the "already claimed" duplicate guard is intentionally NOT run here.
+  // Registration no longer sets matchedRosterId, so there is nothing to claim.
+  // Duplicate-identity protection is enforced at admin approval time by
+  // verification-queue.ts + the @@unique(matchedRosterId) DB constraint.
 
   const passwordHash = await hashPassword(input.password);
 
@@ -78,7 +70,8 @@ export async function registerMember(
     data: {
       email,
       passwordHash,
-      status: outcome.status,
+      // Always PENDING at registration — district admin must approve.
+      status: "PENDING",
       profile: {
         create: {
           fullName: input.fullName,
@@ -90,33 +83,29 @@ export async function registerMember(
         create: {
           rotaryId: input.rotaryId,
           classification: null,
-          // The picked district is the home district — set on BOTH branches so the
-          // scoping key exists even before admin approval.
+          // Home district set at registration so the admin scope query can filter
+          // this member to the right district even before approval.
           districtId: input.districtId,
-          // Only claim the roster identity when actually verified; a fuzzy
-          // PENDING candidate must not consume the unique slot.
-          matchedRosterId:
-            outcome.status === "VERIFIED" ? outcome.rosterMemberId : null,
+          // Never claim the roster identity at registration — the approval step
+          // re-derives the best candidate and reserves it atomically.
+          matchedRosterId: null,
         },
       },
-      // Unmatched signups go to the admin review queue.
-      ...(outcome.status === "PENDING"
-        ? {
-            verificationRequests: {
-              create: {
-                submittedInfo: {
-                  rotaryId: input.rotaryId,
-                  clubName: input.clubName,
-                  districtCode: district.code,
-                  score: outcome.score,
-                  reason: outcome.reason,
-                },
-              },
-            },
-          }
-        : {}),
+      // Always create a VerificationRequest so the admin queue has full context.
+      // It surfaces in /admin/verifications only after hasPaid = true (queue filter).
+      verificationRequests: {
+        create: {
+          submittedInfo: {
+            rotaryId: input.rotaryId,
+            clubName: input.clubName,
+            districtCode: district.code,
+            score: outcome.score,
+            reason: outcome.reason,
+          },
+        },
+      },
     },
   });
 
-  return { userId: user.id, email, status: outcome.status };
+  return { userId: user.id, email, status: "PENDING" };
 }

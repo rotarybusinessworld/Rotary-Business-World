@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { StorageService } from "./types";
 
@@ -24,5 +24,15 @@ export class LocalStorageService implements StorageService {
     await writeFile(path.join(dir, name), bytes);
     const key = `${folder}/${name}`;
     return { url: `/uploads/${key}`, key };
+  }
+
+  async get(key: string): Promise<{ bytes: Buffer; contentType?: string } | null> {
+    const filePath = path.join(process.cwd(), "public", "uploads", key);
+    try {
+      const bytes = await readFile(filePath);
+      return { bytes };
+    } catch {
+      return null;
+    }
   }
 }

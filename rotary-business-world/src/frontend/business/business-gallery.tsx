@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/shared/utils";
+import { toImageSrc } from "@/shared/image";
 
 type GalleryImage = { id: string; url: string };
 
@@ -71,7 +72,7 @@ export function BusinessGallery({ images }: { images: GalleryImage[] }) {
             )}
           >
             <Image
-              src={img.url}
+              src={toImageSrc(img.url)!}
               alt=""
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
@@ -103,7 +104,7 @@ export function BusinessGallery({ images }: { images: GalleryImage[] }) {
             {/* Image */}
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[var(--radius)]">
               <Image
-                src={images[activeIndex].url}
+                src={toImageSrc(images[activeIndex].url)!}
                 alt={`Photo ${activeIndex + 1}`}
                 fill
                 className="object-contain"

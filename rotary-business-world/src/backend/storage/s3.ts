@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, NoSuchKey } from "@aws-sdk/client-s3";
 import type { StorageService } from "./types";
 
 /** AWS S3 storage for production (S3-compatible via optional S3_ENDPOINT override). */
@@ -45,5 +45,19 @@ export class S3StorageService implements StorageService {
       }),
     );
     return { url: `https://${this.publicHost}/${key}`, key };
+  }
+
+  async get(key: string): Promise<{ bytes: Buffer; contentType?: string } | null> {
+    try {
+      const res = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      if (!res.Body) return null;
+      const raw = await res.Body.transformToByteArray();
+      return { bytes: Buffer.from(raw), contentType: res.ContentType };
+    } catch (err) {
+      if (err instanceof NoSuchKey) return null;
+      throw err;
+    }
   }
 }

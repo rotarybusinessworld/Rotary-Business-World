@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { toImageSrc } from "@/shared/image";
 
 /**
  * Round photo-or-initial avatar.
@@ -17,14 +18,15 @@ export function Avatar({
   size?: number;
 }) {
   const initial = name.charAt(0).toUpperCase();
+  const src = toImageSrc(photoUrl);
   return (
     <div
       style={{ width: size, height: size }}
       className="flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted"
     >
-      {photoUrl ? (
+      {src ? (
         <Image
-          src={photoUrl}
+          src={src}
           alt={name}
           width={size}
           height={size}

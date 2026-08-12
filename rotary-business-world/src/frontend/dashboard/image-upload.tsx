@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Upload, X } from "lucide-react";
 import { cn } from "@/shared/utils";
+import { toImageSrc } from "@/shared/image";
 
 const MAX_GALLERY = 12;
 
@@ -88,7 +89,7 @@ export function ImageUpload({
           <>
             {/* Preview */}
             <Image
-              src={value}
+              src={toImageSrc(value) ?? value}
               alt=""
               fill
               className="object-cover"
@@ -216,7 +217,7 @@ export function GalleryUpload({
             key={url}
             className="group relative h-24 w-24 overflow-hidden rounded-[var(--radius)] border border-border"
           >
-            <Image src={url} alt="" fill className="object-cover" sizes="96px" />
+            <Image src={toImageSrc(url) ?? url} alt="" fill className="object-cover" sizes="96px" />
             <button
               type="button"
               onClick={() => onChange(value.filter((u) => u !== url))}

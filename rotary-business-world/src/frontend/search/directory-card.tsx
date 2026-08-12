@@ -4,6 +4,7 @@ import { Badge } from "@/frontend/ui/badge";
 import { BadgeCheck, Building2, MapPin } from "lucide-react";
 import { cn } from "@/shared/utils";
 import type { BusinessHit } from "@/backend/search/types";
+import { toImageSrc } from "@/shared/image";
 
 /**
  * Directory-specific feed card — LinkedIn-style with lift hover and a gold footer CTA.
@@ -38,7 +39,7 @@ export function DirectoryCard({
         <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius)] bg-muted">
           {hit.logoUrl ? (
             <Image
-              src={hit.logoUrl}
+              src={toImageSrc(hit.logoUrl)!}
               alt=""
               width={56}
               height={56}

@@ -14,6 +14,7 @@ import { buttonVariants } from "@/frontend/ui/button";
 import { requirePaid } from "@/backend/auth-helpers";
 import { db } from "@/backend/db";
 import * as reviewService from "@/backend/services/review";
+import { toImageSrc } from "@/shared/image";
 import type { BusinessHit } from "@/backend/search/types";
 import {
   AtSign,
@@ -212,7 +213,7 @@ export default async function BusinessDetailPage({
             {business.coverUrl ? (
               <>
                 <Image
-                  src={business.coverUrl}
+                  src={toImageSrc(business.coverUrl)!}
                   alt=""
                   fill
                   className="object-cover"
@@ -262,7 +263,7 @@ export default async function BusinessDetailPage({
             <div className="relative z-10 -mt-12 mb-3 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius)] bg-card ring-4 ring-card shadow-[var(--shadow-card)]">
               {business.logoUrl ? (
                 <Image
-                  src={business.logoUrl}
+                  src={toImageSrc(business.logoUrl)!}
                   alt=""
                   width={96}
                   height={96}
@@ -515,7 +516,7 @@ export default async function BusinessDetailPage({
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
                     {business.owner.profile?.photoUrl ? (
                       <Image
-                        src={business.owner.profile.photoUrl}
+                        src={toImageSrc(business.owner.profile.photoUrl)!}
                         alt=""
                         width={48}
                         height={48}

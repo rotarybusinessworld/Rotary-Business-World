@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Badge } from "@/frontend/ui/badge";
 import { BadgeCheck, Building2, MapPin } from "lucide-react";
 import type { BusinessHit } from "@/backend/search/types";
+import { toImageSrc } from "@/shared/image";
 
 export function BusinessCard({ hit }: { hit: BusinessHit }) {
   const location = [hit.city, hit.country].filter(Boolean).join(", ");
@@ -14,7 +15,7 @@ export function BusinessCard({ hit }: { hit: BusinessHit }) {
       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius)] bg-muted">
         {hit.logoUrl ? (
           <Image
-            src={hit.logoUrl}
+            src={toImageSrc(hit.logoUrl)!}
             alt=""
             width={56}
             height={56}
