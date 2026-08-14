@@ -11,7 +11,7 @@ import { slugify } from "../src/shared/utils";
 const db = new PrismaClient();
 
 // ── Dummy members ─────────────────────────────────────────────────────────────
-// All get status=VERIFIED and hasPaid=true so their businesses surface in search.
+// All get status=VERIFIED so their businesses surface in search.
 const MEMBERS = [
   { name: "Arjun Mehta",       email: "arjun@rbw.dev",    city: "Mumbai",     country: "India" },
   { name: "Priya Venkatesh",   email: "priya@rbw.dev",    city: "Chennai",    country: "India" },
@@ -379,12 +379,11 @@ async function main() {
   for (const m of MEMBERS) {
     const user = await db.user.upsert({
       where: { email: m.email },
-      update: { status: "VERIFIED", hasPaid: true },
+      update: { status: "VERIFIED" },
       create: {
         email: m.email,
         passwordHash,
         status: "VERIFIED",
-        hasPaid: true,
         profile: {
           create: {
             fullName: m.name,

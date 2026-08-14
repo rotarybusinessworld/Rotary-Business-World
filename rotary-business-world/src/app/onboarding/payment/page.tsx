@@ -49,12 +49,14 @@ const included = [
 export default async function PaymentPage() {
   const user = await requireUser();
 
-  // Already paid → straight to dashboard
+  // Already past the payment step → straight to dashboard
   const record = await db.user.findUnique({
     where: { id: user.id },
-    select: { hasPaid: true },
+    select: { status: true },
   });
-  if (record?.hasPaid) redirect("/dashboard");
+  if (record && record.status !== "PAYMENT_PENDING" && record.status !== "REGISTERED") {
+    redirect("/dashboard");
+  }
 
   const hasStripe = !!process.env.STRIPE_SECRET_KEY;
   const hasRazorpay = !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);

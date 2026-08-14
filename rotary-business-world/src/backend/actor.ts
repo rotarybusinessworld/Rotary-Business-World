@@ -11,7 +11,14 @@ import { ForbiddenError, UnauthorizedError } from "@/backend/errors";
  */
 export type Actor = {
   id: string;
-  status: "PENDING" | "VERIFIED" | "REJECTED" | (string & {});
+  status:
+    | "REGISTERED"
+    | "PAYMENT_PENDING"
+    | "PENDING_VERIFICATION"
+    | "VERIFIED"
+    | "REJECTED"
+    | "SUSPENDED"
+    | (string & {});
   role: "MEMBER" | "DISTRICT_ADMIN" | "MANAGEMENT" | (string & {});
 };
 

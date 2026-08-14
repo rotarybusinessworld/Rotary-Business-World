@@ -45,7 +45,6 @@ async function main() {
     data: {
       role: districtCode ? "DISTRICT_ADMIN" : "MANAGEMENT",
       status: "VERIFIED",
-      hasPaid: true,
       managedDistrictId,
     },
   });

@@ -157,7 +157,7 @@ export function PaymentClient({
     );
   }
 
-  // Demo mode: form action directly — server marks hasPaid true and redirects
+  // Demo mode: form action directly — server records payment and advances status to PENDING_VERIFICATION
   return (
     <form action={demoCompletePayment} onSubmit={() => setLoading(true)}>
       <button type="submit" disabled={loading} className={btnClass}>

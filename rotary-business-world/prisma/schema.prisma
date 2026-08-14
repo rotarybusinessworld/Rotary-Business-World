@@ -22,9 +22,12 @@ enum Role {
 }
 
 enum UserStatus {
-  PENDING
+  REGISTERED            // account created, email unconfirmed
+  PAYMENT_PENDING       // email confirmed, awaiting membership payment
+  PENDING_VERIFICATION  // paid, sitting in the district admin queue
   VERIFIED
   REJECTED
+  SUSPENDED             // admin takedown; all access blocked
 }
 
 enum BusinessStatus {
@@ -50,8 +53,7 @@ model User {
   email          String     @unique
   passwordHash   String
   role           Role       @default(MEMBER)
-  status         UserStatus @default(PENDING)
-  hasPaid        Boolean    @default(false)
+  status         UserStatus @default(PAYMENT_PENDING)
   emailVerifiedAt DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -380,7 +382,7 @@ enum PaymentSource {
   RAZORPAY
 }
 
-/// One membership payment. The real audit trail behind `User.hasPaid`.
+/// One membership payment. Successful capture moves User.status → PENDING_VERIFICATION.
 model Payment {
   id                      String        @id @default(cuid())
   userId                  String

@@ -2,29 +2,32 @@ import { redirect } from "next/navigation";
 import { auth } from "@/backend/auth";
 import { db } from "@/backend/db";
 
-/** Require a logged-in user; redirect to /login (with optional callbackUrl) otherwise. */
+/** Require a logged-in, non-suspended user. Suspended users go to /account/suspended. */
 export async function requireUser(callbackUrl?: string) {
   const session = await auth();
   if (!session?.user) {
     const next = callbackUrl ? `?next=${encodeURIComponent(callbackUrl)}` : "";
     redirect(`/login${next}`);
   }
+  if (session.user.status === "SUSPENDED") {
+    redirect("/account/suspended");
+  }
   return session.user;
 }
 
 /**
- * Require a logged-in user who has completed the membership payment step.
- * Redirects to /onboarding/payment if the user hasn't paid yet.
+ * Require a user who has completed payment.
+ *
+ * Pure status check against the JWT — no extra DB read.
+ * Paid statuses: PENDING_VERIFICATION (in queue) and VERIFIED.
+ * Admins are exempt (they don't pay the membership fee).
  */
 export async function requirePaid(callbackUrl?: string) {
   const user = await requireUser(callbackUrl);
-  // Admins don't pay the membership fee — exempt them (also skips a DB read).
   if (user.role === "MANAGEMENT" || user.role === "DISTRICT_ADMIN") return user;
-  const record = await db.user.findUnique({
-    where: { id: user.id },
-    select: { hasPaid: true },
-  });
-  if (!record?.hasPaid) redirect("/onboarding/payment");
+  if (user.status !== "PENDING_VERIFICATION" && user.status !== "VERIFIED") {
+    redirect("/onboarding/payment");
+  }
   return user;
 }
 

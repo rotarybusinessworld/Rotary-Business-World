@@ -41,11 +41,11 @@ export default async function AdminOverviewPage() {
     clubCount,
     recentActivity,
   ] = await Promise.all([
-    // Pending queue (paid members waiting for approval)
+    // Pending queue (paid members waiting for admin verification)
     db.verificationRequest.count({
       where: {
         status: "PENDING",
-        user: { hasPaid: true, ...userDistrictWhere },
+        user: { status: "PENDING_VERIFICATION", ...userDistrictWhere },
       },
     }),
     // Pending listings awaiting moderation
@@ -56,9 +56,9 @@ export default async function AdminOverviewPage() {
     db.user.count({
       where: { status: "VERIFIED", role: "MEMBER", ...userDistrictWhere },
     }),
-    // All paid members
+    // Members who have paid (in queue or verified)
     db.user.count({
-      where: { hasPaid: true, role: "MEMBER", ...userDistrictWhere },
+      where: { status: { in: ["PENDING_VERIFICATION", "VERIFIED"] }, role: "MEMBER", ...userDistrictWhere },
     }),
     // Approved businesses
     db.business.count({

@@ -36,9 +36,9 @@ function MatchBadge({ score, reason }: { score?: number; reason?: string }) {
 export default async function VerificationsPage() {
   const { managedDistrictId } = await getAdminScope();
 
-  // Members only appear in the pending queue once they have paid (pillar 1).
+  // Members appear in the pending queue once they have paid (status: PENDING_VERIFICATION).
   const pendingUserFilter = {
-    hasPaid: true,
+    status: "PENDING_VERIFICATION" as const,
     ...(managedDistrictId ? { rotaryInfo: { districtId: managedDistrictId } } : {}),
   };
   const districtFilter = managedDistrictId

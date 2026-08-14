@@ -27,7 +27,7 @@ export type RegisterMemberInput = {
 export type RegisterMemberResult = {
   userId: string;
   email: string;
-  status: "VERIFIED" | "PENDING";
+  status: "VERIFIED" | "PAYMENT_PENDING";
 };
 
 export async function registerMember(
@@ -51,8 +51,8 @@ export async function registerMember(
   }
 
   // Run the roster check to capture match score + reason for the admin queue.
-  // Every member registers as PENDING regardless of the outcome — only a district
-  // admin can grant VERIFIED via /admin/verifications (pillars 1 & 2).
+  // Every member registers as PAYMENT_PENDING regardless of the outcome — only a
+  // district admin can grant VERIFIED via /admin/verifications (pillars 1 & 2).
   const outcome = await verifyAgainstRoster({
     rotaryId: input.rotaryId,
     fullName: input.fullName,
@@ -70,8 +70,9 @@ export async function registerMember(
     data: {
       email,
       passwordHash,
-      // Always PENDING at registration — district admin must approve.
-      status: "PENDING",
+      // PAYMENT_PENDING: registered, email confirmed, ready to pay.
+      // (REGISTERED → PAYMENT_PENDING email-confirm step is Week 2 / magic-link.)
+      status: "PAYMENT_PENDING",
       profile: {
         create: {
           fullName: input.fullName,
@@ -92,7 +93,7 @@ export async function registerMember(
         },
       },
       // Always create a VerificationRequest so the admin queue has full context.
-      // It surfaces in /admin/verifications only after hasPaid = true (queue filter).
+      // It appears in /admin/verifications once the member reaches PENDING_VERIFICATION.
       verificationRequests: {
         create: {
           submittedInfo: {
@@ -107,5 +108,5 @@ export async function registerMember(
     },
   });
 
-  return { userId: user.id, email, status: "PENDING" };
+  return { userId: user.id, email, status: "PAYMENT_PENDING" };
 }

@@ -98,7 +98,6 @@ export async function createDistrictAdmin(
         passwordHash,
         role: "DISTRICT_ADMIN",
         status: "VERIFIED",
-        hasPaid: true,
         managedDistrictId: district.id,
         profile: { create: { fullName: input.fullName } },
       },
