@@ -432,7 +432,7 @@ async function main() {
         phone: b.phone,
         discountPercent: b.discountPercent ?? null,
         discountNote: b.discountNote ?? null,
-        status: "ACTIVE",
+        status: "APPROVED",
       },
     });
     created++;

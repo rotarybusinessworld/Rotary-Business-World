@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAdminScope, requireSuperAdmin } from "@/backend/auth-helpers";
+import { getAdminScope, requireManagement } from "@/backend/auth-helpers";
 import * as queue from "@/backend/services/verification-queue";
 import * as adminMgmt from "@/backend/services/admin-management";
 import {
@@ -49,7 +49,7 @@ export async function rejectVerification(requestId: string, formData?: FormData)
 }
 
 // ---------------------------------------------------------------------------
-// District-admin management (SUPER_ADMIN only)
+// District-admin management (MANAGEMENT only)
 // ---------------------------------------------------------------------------
 
 export type DistrictAdminFormState = {
@@ -63,7 +63,7 @@ export async function createDistrictAdminAction(
   _prev: DistrictAdminFormState,
   formData: FormData,
 ): Promise<DistrictAdminFormState> {
-  const user = await requireSuperAdmin();
+  const user = await requireManagement();
 
   const parsed = createDistrictAdminSchema.safeParse(
     Object.fromEntries(formData),
@@ -88,7 +88,7 @@ export async function revokeDistrictAdminAction(
   userId: string,
   _formData?: FormData,
 ) {
-  const user = await requireSuperAdmin();
+  const user = await requireManagement();
 
   try {
     await adminMgmt.revokeDistrictAdmin(user, userId);
@@ -101,7 +101,7 @@ export async function revokeDistrictAdminAction(
 }
 
 // ---------------------------------------------------------------------------
-// District + Club creation (SUPER_ADMIN only)
+// District + Club creation (MANAGEMENT only)
 // ---------------------------------------------------------------------------
 
 export type DistrictFormState = {
@@ -115,7 +115,7 @@ export async function createDistrictAction(
   _prev: DistrictFormState,
   formData: FormData,
 ): Promise<DistrictFormState> {
-  const user = await requireSuperAdmin();
+  const user = await requireManagement();
 
   const parsed = createDistrictSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -144,7 +144,7 @@ export async function createClubAction(
   _prev: ClubFormState,
   formData: FormData,
 ): Promise<ClubFormState> {
-  const user = await requireSuperAdmin();
+  const user = await requireManagement();
 
   const parsed = createClubSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -164,7 +164,7 @@ export async function createClubAction(
 
 /** Move a district admin to another district. */
 export async function reassignDistrictAdminAction(formData: FormData) {
-  const user = await requireSuperAdmin();
+  const user = await requireManagement();
   const userId = String(formData.get("userId") ?? "");
   const districtId = String(formData.get("districtId") ?? "");
 

@@ -11,6 +11,7 @@ const badgeVariants = cva(
         verified: "bg-[color-mix(in_srgb,var(--color-success)_14%,white)] text-success",
         gold: "bg-[color-mix(in_srgb,var(--color-rotary-gold)_20%,white)] text-rotary-gold-dark",
         muted: "bg-muted text-muted-foreground",
+        destructive: "bg-[color-mix(in_srgb,var(--color-destructive)_14%,white)] text-destructive",
       },
       size: {
         sm: "px-2 py-0.5 text-[11px]",

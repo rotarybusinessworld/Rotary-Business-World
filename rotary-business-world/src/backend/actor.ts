@@ -12,7 +12,7 @@ import { ForbiddenError, UnauthorizedError } from "@/backend/errors";
 export type Actor = {
   id: string;
   status: "PENDING" | "VERIFIED" | "REJECTED" | (string & {});
-  role: "MEMBER" | "CLUB_ADMIN" | "SUPER_ADMIN" | (string & {});
+  role: "MEMBER" | "DISTRICT_ADMIN" | "MANAGEMENT" | (string & {});
 };
 
 /** Throws unless the actor has completed roster verification. */
@@ -24,20 +24,20 @@ export function assertVerified(actor: Actor | null | undefined): Actor {
   return actor;
 }
 
-/** Throws unless the actor is a club or super admin. */
+/** Throws unless the actor is a district or management admin. */
 export function assertAdmin(actor: Actor | null | undefined): Actor {
   if (!actor) throw new UnauthorizedError();
-  if (actor.role !== "SUPER_ADMIN" && actor.role !== "CLUB_ADMIN") {
+  if (actor.role !== "MANAGEMENT" && actor.role !== "DISTRICT_ADMIN") {
     throw new ForbiddenError("Admin access required");
   }
   return actor;
 }
 
-/** Throws unless the actor is a super-admin (management account). */
-export function assertSuperAdmin(actor: Actor | null | undefined): Actor {
+/** Throws unless the actor is a management account (platform-wide access). */
+export function assertManagement(actor: Actor | null | undefined): Actor {
   if (!actor) throw new UnauthorizedError();
-  if (actor.role !== "SUPER_ADMIN") {
-    throw new ForbiddenError("Super-admin access required");
+  if (actor.role !== "MANAGEMENT") {
+    throw new ForbiddenError("Management access required");
   }
   return actor;
 }

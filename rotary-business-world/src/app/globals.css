@@ -54,6 +54,22 @@
   --animate-fade-in-up: fade-in-up 0.6s var(--ease-out-soft) both;
   --animate-scale-in: scale-in 0.5s var(--ease-out-soft) both;
   --animate-shimmer: shimmer 1.5s ease-in-out infinite;
+
+  /* ─── Page loader — full-screen route splash ─────────────────────────────
+     To re-theme the loading screen, edit only these tokens. No component
+     changes required.
+  ─────────────────────────────────────────────────────────────────────────── */
+  --loader-bg: #ffffff;                            /* splash background       */
+  --loader-glow: rgba(201, 162, 76, 0.10);         /* ambient radial glow     */
+  --loader-ring-track: var(--color-border);        /* spinner idle arc        */
+  --loader-ring-arc: var(--color-rotary-gold);     /* spinner moving arc      */
+  --loader-label: var(--color-muted-foreground);   /* "Loading…" label text   */
+
+  /* ─── Brand watermark ────────────────────────────────────────────────────
+     Opacity of the RBW emblem on dark (navy) surfaces. Change here to
+     update all watermarks at once.
+  ─────────────────────────────────────────────────────────────────────────── */
+  --watermark-opacity: 0.15;
 }
 
 @keyframes fade-in {
@@ -86,6 +102,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden; /* prevent any child from creating viewport-level horizontal scroll */
 }
 
 body {

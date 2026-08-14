@@ -16,8 +16,8 @@ type SubmittedInfo = {
 /**
  * Assert that the admin is allowed to act on a request belonging to `targetDistrictId`.
  *
- * - SUPER_ADMIN (managedDistrictId === null) → always allowed.
- * - CLUB_ADMIN → only if their managedDistrictId matches the target's district.
+ * - MANAGEMENT (managedDistrictId === null) → always allowed.
+ * - DISTRICT_ADMIN → only if their managedDistrictId matches the target's district.
  *
  * Throws ForbiddenError on mismatch (prevents IDOR: a club admin guessing another
  * district's request id).
@@ -27,7 +27,7 @@ function assertDistrictScope(
   targetDistrictId: string | null | undefined,
   requestId: string,
 ): void {
-  if (managedDistrictId === null) return; // SUPER_ADMIN — sees all
+  if (managedDistrictId === null) return; // MANAGEMENT — sees all
   if (!targetDistrictId || targetDistrictId !== managedDistrictId) {
     throw new ForbiddenError(
       `Request ${requestId} does not belong to your managed district`,
@@ -38,8 +38,8 @@ function assertDistrictScope(
 /**
  * Approve a pending member: mark VERIFIED and link a roster identity if free.
  *
- * @param managedDistrictId  null → caller is SUPER_ADMIN (no scoping).
- *                           string → caller is CLUB_ADMIN and must match target's district.
+ * @param managedDistrictId  null → caller is MANAGEMENT (no scoping).
+ *                           string → caller is DISTRICT_ADMIN and must match target's district.
  */
 export async function approveVerification(
   actor: Actor,
@@ -123,7 +123,7 @@ export async function approveVerification(
 /**
  * Reject a pending member.
  *
- * @param managedDistrictId  null → SUPER_ADMIN (no scoping). string → CLUB_ADMIN, must match.
+ * @param managedDistrictId  null → MANAGEMENT (no scoping). string → DISTRICT_ADMIN, must match.
  */
 export async function rejectVerification(
   actor: Actor,

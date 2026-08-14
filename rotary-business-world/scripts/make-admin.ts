@@ -1,10 +1,10 @@
 /**
  * Promote a user to an admin role.
  *
- * Without --district: promote to SUPER_ADMIN (management account).
+ * Without --district: promote to MANAGEMENT (platform-wide access).
  *   npm run make-admin -- someone@example.com
  *
- * With --district <code>: promote to CLUB_ADMIN scoped to that district.
+ * With --district <code>: promote to DISTRICT_ADMIN scoped to that district.
  *   npm run make-admin -- someone@example.com --district 3201
  */
 import { PrismaClient } from "@prisma/client";
@@ -43,7 +43,7 @@ async function main() {
   const user = await db.user.update({
     where: { email },
     data: {
-      role: districtCode ? "CLUB_ADMIN" : "SUPER_ADMIN",
+      role: districtCode ? "DISTRICT_ADMIN" : "MANAGEMENT",
       status: "VERIFIED",
       hasPaid: true,
       managedDistrictId,
@@ -52,10 +52,10 @@ async function main() {
 
   if (districtCode) {
     console.log(
-      `✓ ${user.email} is now CLUB_ADMIN for district ${districtCode} (verified).`,
+      `✓ ${user.email} is now DISTRICT_ADMIN for district ${districtCode} (verified).`,
     );
   } else {
-    console.log(`✓ ${user.email} is now SUPER_ADMIN (verified).`);
+    console.log(`✓ ${user.email} is now MANAGEMENT (verified).`);
   }
 }
 

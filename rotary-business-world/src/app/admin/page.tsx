@@ -7,6 +7,7 @@ import {
   Building2,
   Clock,
   Globe,
+  Store,
   Users,
 } from "lucide-react";
 import { StatCard } from "@/frontend/admin/stat-card";
@@ -21,7 +22,7 @@ export default async function AdminOverviewPage() {
   const { managedDistrictId } = await getAdminScope();
 
   // ── Build scoped filters ──────────────────────────────────────────────────
-  // CLUB_ADMIN: restrict to their district. SUPER_ADMIN: no filter.
+  // DISTRICT_ADMIN: restrict to their district. MANAGEMENT: no filter.
   const userDistrictWhere = managedDistrictId
     ? { rotaryInfo: { districtId: managedDistrictId } }
     : {};
@@ -32,6 +33,7 @@ export default async function AdminOverviewPage() {
   // ── Parallel stat queries ─────────────────────────────────────────────────
   const [
     pendingCount,
+    pendingListingsCount,
     verifiedCount,
     paidCount,
     businessCount,
@@ -46,6 +48,10 @@ export default async function AdminOverviewPage() {
         user: { hasPaid: true, ...userDistrictWhere },
       },
     }),
+    // Pending listings awaiting moderation
+    db.business.count({
+      where: { status: "PENDING", ...businessDistrictWhere },
+    }),
     // Verified members
     db.user.count({
       where: { status: "VERIFIED", role: "MEMBER", ...userDistrictWhere },
@@ -54,9 +60,9 @@ export default async function AdminOverviewPage() {
     db.user.count({
       where: { hasPaid: true, role: "MEMBER", ...userDistrictWhere },
     }),
-    // Active businesses
+    // Approved businesses
     db.business.count({
-      where: { status: "ACTIVE", ...businessDistrictWhere },
+      where: { status: "APPROVED", ...businessDistrictWhere },
     }),
     // Districts (super-admin only)
     managedDistrictId ? Promise.resolve(null) : db.district.count(),
@@ -116,6 +122,13 @@ export default async function AdminOverviewPage() {
           value={businessCount}
           label="Active businesses"
         />
+        <StatCard
+          icon={Store}
+          value={pendingListingsCount}
+          label="Listings pending"
+          hint="Awaiting moderation"
+          accent={pendingListingsCount > 0}
+        />
         {/* Super-admin only tiles */}
         {!managedDistrictId && districtCount !== null && (
           <StatCard icon={Globe} value={districtCount} label="Districts" />
@@ -140,6 +153,18 @@ export default async function AdminOverviewPage() {
             {pendingCount > 0 && (
               <span className="ml-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-rotary-gold px-1 text-[10px] font-bold text-navy">
                 {pendingCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/admin/listings"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <Store className="h-3.5 w-3.5" />
+            Listing queue
+            {pendingListingsCount > 0 && (
+              <span className="ml-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-rotary-gold px-1 text-[10px] font-bold text-navy">
+                {pendingListingsCount}
               </span>
             )}
           </Link>

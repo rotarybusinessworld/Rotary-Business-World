@@ -95,7 +95,10 @@ function galleryRows(gallery: string[] | undefined) {
     .map((url, sortOrder) => ({ url, sortOrder }));
 }
 
-/** Create a listing owned by the actor. Requires a VERIFIED member. */
+/** Create a listing owned by the actor. Requires a VERIFIED member.
+ *  New listings start as PENDING — invisible in search until a district admin
+ *  approves them (pillar 3). The search layer already filters status = 'APPROVED'.
+ */
 export async function createBusiness(
   actor: Actor,
   input: BusinessInput,
@@ -109,6 +112,7 @@ export async function createBusiness(
     data: {
       ownerId: actor.id,
       slug,
+      status: "PENDING", // explicit — never rely on schema default for new listings
       ...scalarFields(input),
       ...taxonomy,
       images: { create: galleryRows(input.gallery) },
@@ -120,6 +124,15 @@ export async function createBusiness(
  * Update a listing the actor owns.
  * Throws `NotFoundError` when it doesn't exist *or* isn't theirs — we don't
  * leak the difference.
+ *
+ * **Re-moderation rule:** editing a *material* field (name, description,
+ * industry/category, photos, address) on an already-APPROVED listing re-enters it
+ * as PENDING so the district admin can re-review. This prevents the
+ * "moderate-then-swap" bypass. Cosmetic-only changes (discount fields) leave
+ * an APPROVED listing live.
+ *
+ * PENDING/DRAFT/REJECTED listings that are edited stay PENDING — they still need approval.
+ * SUSPENDED listings cannot be edited by the owner (admins use business-moderation).
  */
 export async function updateBusiness(
   actor: Actor,
@@ -131,13 +144,47 @@ export async function updateBusiness(
   const owned = await db.business.findFirst({ where: { id, ownerId: actor.id } });
   if (!owned) throw new NotFoundError("Business not found");
 
+  // Suspended listings are locked — owner must contact the admin.
+  if (owned.status === "SUSPENDED") {
+    throw new NotFoundError("Business not found");
+  }
+
   const taxonomy = await resolveTaxonomy(input.industryId, input.categoryId);
   const slug = await uniqueSlug(input.name, id);
+
+  // Detect material changes that warrant re-moderation.
+  const materialChanged =
+    input.name !== owned.name ||
+    (input.description ?? null) !== owned.description ||
+    (input.industryId ?? null) !== owned.industryId ||
+    (input.categoryId ?? null) !== owned.categoryId ||
+    (input.logoUrl ?? null) !== owned.logoUrl ||
+    (input.coverUrl ?? null) !== owned.coverUrl ||
+    (input.addressLine ?? null) !== owned.addressLine ||
+    (input.city ?? null) !== owned.city ||
+    (input.country ?? null) !== owned.country ||
+    // Gallery changes count as material (photo swap bypass)
+    JSON.stringify(input.gallery ?? []) !== JSON.stringify(
+      (await db.businessImage.findMany({
+        where: { businessId: id },
+        orderBy: { sortOrder: "asc" },
+        select: { url: true },
+      })).map((img) => img.url),
+    );
+
+  // APPROVED: re-enter moderation on material changes (prevents "moderate-then-swap").
+  // REJECTED: always re-enter moderation on any save (owner is resubmitting).
+  // PENDING/DRAFT: stay as-is until approved.
+  const nextStatus =
+    (owned.status === "APPROVED" && materialChanged) || owned.status === "REJECTED"
+      ? "PENDING"
+      : owned.status;
 
   return db.business.update({
     where: { id },
     data: {
       slug,
+      status: nextStatus,
       ...scalarFields(input),
       ...taxonomy,
       images: { deleteMany: {}, create: galleryRows(input.gallery) },

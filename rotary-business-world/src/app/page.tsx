@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/frontend/site-header";
 import { Logo } from "@/frontend/brand/logo";
+import { BrandWatermark } from "@/frontend/brand/brand-watermark";
 import { HeroVideoMobile, HeroVideoDesktopCard } from "@/frontend/brand/hero-video";
 import { buttonVariants } from "@/frontend/ui/button";
 import {
@@ -44,6 +45,7 @@ export default function HomePage() {
 
       {/* Hero — dark, editorial, gold-lit */}
       <section className="relative overflow-hidden bg-navy text-white">
+        <BrandWatermark size={300} />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -86,7 +88,7 @@ export default function HomePage() {
           {/* Search */}
           <form
             action="/directory"
-            className="mx-auto mt-5 flex w-full max-w-xl animate-fade-in-up stagger-3 items-center gap-2 rounded-full bg-white p-2 shadow-[var(--shadow-pop)] lg:mt-9"
+            className="mx-auto mt-5 flex w-full max-w-xl animate-fade-in-up stagger-3 items-center gap-2 rounded-full bg-white p-2 shadow-[var(--shadow-pop)] focus-within:ring-2 focus-within:ring-rotary-gold/50 lg:mt-9"
           >
             <div className="flex flex-1 items-center gap-2 pl-3">
               <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -144,7 +146,7 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+      <section className="w-full mx-auto max-w-6xl px-4 py-16 sm:py-20">
         <div className="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rotary-gold-dark">
             Why members join
@@ -153,11 +155,11 @@ export default function HomePage() {
             Build friendship,trust and designed for growth
           </h2>
         </div>
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:gap-5 sm:overflow-visible sm:pb-0">
           {features.map((f) => (
             <div
               key={f.title}
-              className="group rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-card)] transition-all duration-200 ease-out hover:-translate-y-1 hover:border-primary/30 hover:shadow-[var(--shadow-pop)] sm:p-7"
+              className="min-w-[76vw] shrink-0 snap-start group rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-card)] transition-all duration-200 ease-out hover:-translate-y-1 hover:border-primary/30 hover:shadow-[var(--shadow-pop)] sm:min-w-0 sm:p-7"
             >
               <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-navy text-rotary-gold-light transition-transform duration-200 ease-out group-hover:scale-105">
                 <f.icon className="h-5 w-5" />
@@ -174,8 +176,9 @@ export default function HomePage() {
       </section>
 
       {/* CTA */}
-      <section className="mx-auto mb-16 max-w-6xl px-4 sm:mb-20">
+      <section className="w-full mx-auto mb-16 max-w-6xl px-4 sm:mb-20">
         <div className="relative overflow-hidden rounded-3xl bg-navy px-6 py-12 text-center text-white sm:px-8 sm:py-14">
+          <BrandWatermark size={220} />
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"

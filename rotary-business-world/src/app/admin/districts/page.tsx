@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Building2, Globe, MapPin, ShieldOff, UserCog } from "lucide-react";
-import { requireSuperAdmin } from "@/backend/auth-helpers";
+import { requireManagement } from "@/backend/auth-helpers";
 import { db } from "@/backend/db";
 import * as adminMgmt from "@/backend/services/admin-management";
 import { revokeDistrictAdminAction, reassignDistrictAdminAction } from "@/backend/actions/admin";
@@ -18,7 +18,7 @@ import { CreateClubForm } from "./create-club-form";
 export const metadata: Metadata = { title: "Districts & Clubs" };
 
 export default async function DistrictsPage() {
-  const user = await requireSuperAdmin();
+  const user = await requireManagement();
 
   const [districts, clubs] = await Promise.all([
     adminMgmt.listDistrictsWithAdmins(user),

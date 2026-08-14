@@ -8,7 +8,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const user = await requireAdmin();
-  const isSuperAdmin = user.role === "SUPER_ADMIN";
+  const isSuperAdmin = user.role === "MANAGEMENT";
 
   // Fetch admin display name for the topbar.
   const profile = await db.profile.findUnique({

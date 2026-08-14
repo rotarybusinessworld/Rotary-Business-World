@@ -19,7 +19,7 @@ export async function requireUser(callbackUrl?: string) {
 export async function requirePaid(callbackUrl?: string) {
   const user = await requireUser(callbackUrl);
   // Admins don't pay the membership fee — exempt them (also skips a DB read).
-  if (user.role === "SUPER_ADMIN" || user.role === "CLUB_ADMIN") return user;
+  if (user.role === "MANAGEMENT" || user.role === "DISTRICT_ADMIN") return user;
   const record = await db.user.findUnique({
     where: { id: user.id },
     select: { hasPaid: true },
@@ -35,22 +35,22 @@ export async function requireVerified(callbackUrl?: string) {
   return user;
 }
 
-/** Require an admin (club or super); non-admins are sent to the dashboard. */
+/** Require an admin (district or management); non-admins are sent to the dashboard. */
 export async function requireAdmin() {
   const user = await requireUser();
-  if (user.role !== "SUPER_ADMIN" && user.role !== "CLUB_ADMIN") {
+  if (user.role !== "MANAGEMENT" && user.role !== "DISTRICT_ADMIN") {
     redirect("/dashboard");
   }
   return user;
 }
 
 /**
- * Require a super-admin (management account only).
+ * Require a management account (platform-wide access only).
  */
-export async function requireSuperAdmin() {
+export async function requireManagement() {
   const user = await requireUser();
-  if (user.role !== "SUPER_ADMIN") {
-    redirect(user.role === "CLUB_ADMIN" ? "/admin" : "/dashboard");
+  if (user.role !== "MANAGEMENT") {
+    redirect(user.role === "DISTRICT_ADMIN" ? "/admin" : "/dashboard");
   }
   return user;
 }
@@ -63,7 +63,7 @@ export type AdminScope = {
 export async function getAdminScope(): Promise<AdminScope> {
   const user = await requireAdmin();
 
-  if (user.role === "SUPER_ADMIN") {
+  if (user.role === "MANAGEMENT") {
     return { user, managedDistrictId: null };
   }
 
@@ -73,8 +73,8 @@ export async function getAdminScope(): Promise<AdminScope> {
   });
 
   const managedDistrictId = record?.managedDistrictId ?? null;
-  // Fail closed: a CLUB_ADMIN with no district (e.g. district deleted via
-  // ON DELETE SET NULL) must NOT fall through to unscoped SUPER_ADMIN access.
+  // Fail closed: a DISTRICT_ADMIN with no district (e.g. district deleted via
+  // ON DELETE SET NULL) must NOT fall through to unscoped MANAGEMENT access.
   if (!managedDistrictId) redirect("/dashboard");
 
   return { user, managedDistrictId };

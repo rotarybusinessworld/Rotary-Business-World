@@ -1,16 +1,16 @@
 import "server-only";
 import { db } from "@/backend/db";
-import { assertSuperAdmin, type Actor } from "@/backend/actor";
+import { assertManagement, type Actor } from "@/backend/actor";
 import { hashPassword } from "@/backend/password";
 import { auditCreate } from "@/backend/audit";
 import { ConflictError, NotFoundError } from "@/backend/errors";
 
 /**
- * Management (SUPER_ADMIN) operations for district admins — the in-app
+ * Management (MANAGEMENT) operations for district admins — the in-app
  * equivalent of `scripts/make-admin.ts`. A "district admin" is a
- * `role = CLUB_ADMIN` user with `managedDistrictId` set.
+ * `role = DISTRICT_ADMIN` user with `managedDistrictId` set.
  *
- * Transport-agnostic like the other services: `Actor` first, `assertSuperAdmin`,
+ * Transport-agnostic like the other services: `Actor` first, `assertManagement`,
  * throw `AppError` on failure, wrap each mutation + its audit row in one
  * `db.$transaction`.
  */
@@ -33,7 +33,7 @@ export type DistrictWithAdmins = {
 export async function listDistrictsWithAdmins(
   actor: Actor,
 ): Promise<DistrictWithAdmins[]> {
-  assertSuperAdmin(actor);
+  assertManagement(actor);
 
   const districts = await db.district.findMany({
     select: {
@@ -42,7 +42,7 @@ export async function listDistrictsWithAdmins(
       name: true,
       country: true,
       admins: {
-        where: { role: "CLUB_ADMIN" },
+        where: { role: "DISTRICT_ADMIN" },
         select: {
           id: true,
           email: true,
@@ -72,7 +72,7 @@ export async function createDistrictAdmin(
   actor: Actor,
   input: { fullName: string; email: string; password: string; districtId: string },
 ): Promise<{ id: string }> {
-  const admin = assertSuperAdmin(actor);
+  const admin = assertManagement(actor);
   const email = input.email.toLowerCase();
 
   const district = await db.district.findUnique({
@@ -96,7 +96,7 @@ export async function createDistrictAdmin(
       data: {
         email,
         passwordHash,
-        role: "CLUB_ADMIN",
+        role: "DISTRICT_ADMIN",
         status: "VERIFIED",
         hasPaid: true,
         managedDistrictId: district.id,
@@ -123,7 +123,7 @@ export async function createDistrictAdmin(
 }
 
 // ---------------------------------------------------------------------------
-// District + Club CRUD (SUPER_ADMIN only)
+// District + Club CRUD (MANAGEMENT only)
 // ---------------------------------------------------------------------------
 
 /** Create a new district. Code must be unique (natural Rotary key, e.g. "3201"). */
@@ -131,7 +131,7 @@ export async function createDistrict(
   actor: Actor,
   input: { code: string; name?: string; country?: string },
 ): Promise<{ id: string }> {
-  const admin = assertSuperAdmin(actor);
+  const admin = assertManagement(actor);
   const code = input.code.trim().toUpperCase();
 
   const existing = await db.district.findUnique({ where: { code } });
@@ -168,7 +168,7 @@ export async function createClub(
   actor: Actor,
   input: { name: string; districtId: string; city?: string; country?: string },
 ): Promise<{ id: string }> {
-  const admin = assertSuperAdmin(actor);
+  const admin = assertManagement(actor);
 
   const district = await db.district.findUnique({
     where: { id: input.districtId },
@@ -219,13 +219,13 @@ export async function revokeDistrictAdmin(
   actor: Actor,
   userId: string,
 ): Promise<void> {
-  const admin = assertSuperAdmin(actor);
+  const admin = assertManagement(actor);
 
   const target = await db.user.findUnique({
     where: { id: userId },
     select: { id: true, role: true, managedDistrictId: true },
   });
-  if (!target || target.role !== "CLUB_ADMIN") {
+  if (!target || target.role !== "DISTRICT_ADMIN") {
     throw new NotFoundError("District admin not found");
   }
 
@@ -250,13 +250,13 @@ export async function reassignDistrictAdmin(
   userId: string,
   districtId: string,
 ): Promise<void> {
-  const admin = assertSuperAdmin(actor);
+  const admin = assertManagement(actor);
 
   const target = await db.user.findUnique({
     where: { id: userId },
     select: { id: true, role: true, managedDistrictId: true },
   });
-  if (!target || target.role !== "CLUB_ADMIN") {
+  if (!target || target.role !== "DISTRICT_ADMIN") {
     throw new NotFoundError("District admin not found");
   }
 

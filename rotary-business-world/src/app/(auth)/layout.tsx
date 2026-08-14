@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { BrandWatermark } from "@/frontend/brand/brand-watermark";
 
 export default function AuthLayout({
   children,
@@ -8,6 +9,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-navy px-4 py-10">
+      <BrandWatermark size={240} />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"

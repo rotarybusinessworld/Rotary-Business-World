@@ -64,7 +64,7 @@ export class PostgresSearchService implements SearchService {
                  'business'::text                  AS type,
                  MAX(similarity(b."name", ${q}))   AS sim
           FROM   "Business" b
-          WHERE  b."status" = 'ACTIVE'
+          WHERE  b."status" = 'APPROVED'
             AND  (b."name" ILIKE ${likeQ} OR b."name" % ${q})
           GROUP  BY b."name"
           ORDER  BY 3 DESC
@@ -96,7 +96,7 @@ export class PostgresSearchService implements SearchService {
                  'city'::text                      AS type,
                  MAX(similarity(b."city", ${q}))   AS sim
           FROM   "Business" b
-          WHERE  b."status" = 'ACTIVE'
+          WHERE  b."status" = 'APPROVED'
             AND  b."city"  IS NOT NULL
             AND  b."city"  <> ''
             AND  (b."city" ILIKE ${likeQ} OR b."city" % ${q})
@@ -130,7 +130,7 @@ export class PostgresSearchService implements SearchService {
     const prefixQ = q ? toPrefixTsquery(q) : null;
 
     // ── WHERE ──────────────────────────────────────────────────────────────
-    const filters: Prisma.Sql[] = [Prisma.sql`b."status" = 'ACTIVE'`];
+    const filters: Prisma.Sql[] = [Prisma.sql`b."status" = 'APPROVED'`];
     if (params.industry)
       filters.push(Prisma.sql`b."industryName" = ${params.industry}`);
     if (params.category)
@@ -234,13 +234,13 @@ export class PostgresSearchService implements SearchService {
     const rows = await db.$queryRaw<{ term: string; sim: number }[]>`
       SELECT t.term, similarity(t.term, ${q}) AS sim
       FROM (
-        SELECT "name" AS term FROM "Business"  WHERE "status" = 'ACTIVE' AND "name" IS NOT NULL
+        SELECT "name" AS term FROM "Business"  WHERE "status" = 'APPROVED' AND "name" IS NOT NULL
         UNION
         SELECT "name"          FROM "Industry" WHERE "name" IS NOT NULL
         UNION
         SELECT "name"          FROM "Category" WHERE "name" IS NOT NULL
         UNION
-        SELECT DISTINCT "city" FROM "Business" WHERE "status" = 'ACTIVE' AND "city" IS NOT NULL
+        SELECT DISTINCT "city" FROM "Business" WHERE "status" = 'APPROVED' AND "city" IS NOT NULL
       ) t
       WHERE similarity(t.term, ${q}) > ${DYM_THRESHOLD}
       ORDER BY sim DESC

@@ -71,7 +71,7 @@ export default async function BusinessDetailPage({
   const viewer = await requirePaid(`/business/${slug}`);
 
   const business = await getBusiness(slug);
-  if (!business || business.status !== "ACTIVE") notFound();
+  if (!business || business.status !== "APPROVED") notFound();
 
   const isOwner = viewer.id === business.ownerId;
   const ownerVerified = business.owner.status === "VERIFIED";
@@ -91,7 +91,7 @@ export default async function BusinessDetailPage({
   const similar = business.industryId
     ? await db.business.findMany({
         where: {
-          status: "ACTIVE",
+          status: "APPROVED",
           industryId: business.industryId,
           id: { not: business.id },
         },

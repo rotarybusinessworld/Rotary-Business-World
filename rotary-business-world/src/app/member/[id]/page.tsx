@@ -30,7 +30,7 @@ async function getMember(id: string) {
     include: {
       profile: true,
       rotaryInfo: { include: { club: true, district: true } },
-      businesses: { where: { status: "ACTIVE" } },
+      businesses: { where: { status: "APPROVED" } },
     },
   });
 }

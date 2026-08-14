@@ -1,27 +1,36 @@
 /**
- * Rewrites a stored image URL to a same-origin authenticated proxy path so
- * images are served through `/api/images/[...key]` rather than directly from S3.
- * The S3 bucket is private; the proxy validates the session before streaming the object.
+ * Returns a URL suitable for an `<img src>` attribute from a stored image value.
+ *
+ * Images are served directly from the public CloudFront/CDN distribution —
+ * they do NOT route through the app server. The stored value is always the
+ * absolute CDN/S3 URL produced at upload time; we just pass it through,
+ * optionally remapping the origin to the current public host so that rows
+ * written against an older S3 hostname still resolve after a CDN switch.
  *
  * Rules:
- *   - null / empty          → undefined (no src rendered)
- *   - already relative      → returned as-is  (covers `/uploads/…` in local dev
- *                             and `/api/images/…` if already transformed)
- *   - absolute S3 / HTTPS   → strips origin, returns `/api/images/<key>`
- *   - unparseable           → returned as-is (defensive)
+ *   - null / empty        → undefined (no src rendered)
+ *   - relative path       → returned as-is  (covers `/uploads/…` in local dev)
+ *   - absolute URL, same  → returned as-is  (already the CDN URL)
+ *   - absolute URL, diff  → origin swapped to NEXT_PUBLIC_S3_PUBLIC_HOSTNAME
+ *                           (handles legacy rows pointing at the old S3 host)
+ *   - unparseable         → returned as-is (defensive)
  */
+const PUBLIC_HOST = process.env.NEXT_PUBLIC_S3_PUBLIC_HOSTNAME;
+
 export function toImageSrc(stored: string | null | undefined): string | undefined {
   if (!stored) return undefined;
 
-  // Already a relative path — pass through unchanged.
+  // Relative path (local-dev `/uploads/…`) — pass through unchanged.
   if (stored.startsWith("/")) return stored;
 
-  // Absolute URL: extract the path component and route through the proxy.
+  // Absolute URL: serve directly; remap origin if it differs from the current
+  // public host so legacy S3-origin rows still resolve via CloudFront.
   try {
-    const { pathname } = new URL(stored);
-    const key = pathname.replace(/^\//, ""); // strip leading /
-    if (!key) return stored;
-    return `/api/images/${key}`;
+    const u = new URL(stored);
+    if (PUBLIC_HOST && u.hostname !== PUBLIC_HOST) {
+      return `https://${PUBLIC_HOST}${u.pathname}`;
+    }
+    return stored;
   } catch {
     // Not a parseable URL — return unchanged.
     return stored;

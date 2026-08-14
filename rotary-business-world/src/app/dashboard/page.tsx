@@ -237,9 +237,28 @@ export default async function DashboardPage() {
   );
 }
 
+function statusBadge(status: string) {
+  switch (status) {
+    case "APPROVED":
+      return <Badge variant="verified" size="sm"><BadgeCheck className="h-3 w-3" /> Live</Badge>;
+    case "PENDING":
+      return <Badge variant="gold" size="sm"><Clock className="h-3 w-3" /> Pending review</Badge>;
+    case "DRAFT":
+      return <Badge variant="muted" size="sm">Draft</Badge>;
+    case "REJECTED":
+      return <Badge variant="destructive" size="sm">Rejected</Badge>;
+    case "SUSPENDED":
+      return <Badge variant="default" size="sm">Suspended</Badge>;
+    default:
+      return <Badge variant="muted" size="sm">{status}</Badge>;
+  }
+}
+
 function BusinessCard({ business }: { business: Business }) {
   const location = [business.city, business.country].filter(Boolean).join(", ");
-  const isActive = business.status === "ACTIVE";
+  const isPending = business.status === "PENDING";
+  const isDraft = business.status === "DRAFT";
+  const isRejected = business.status === "REJECTED";
 
   return (
     <div className="group flex flex-col gap-0 overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-[var(--shadow-card)] transition-all duration-200 ease-out hover:border-primary/30 hover:shadow-[var(--shadow-pop)]">
@@ -266,13 +285,7 @@ function BusinessCard({ business }: { business: Business }) {
             <h3 className="truncate font-[family-name:var(--font-display)] font-semibold leading-snug text-foreground">
               {business.name}
             </h3>
-            <Badge
-              variant={isActive ? "verified" : "gold"}
-              size="sm"
-              className="shrink-0"
-            >
-              {isActive ? "Active" : "Pending"}
-            </Badge>
+            {statusBadge(business.status)}
           </div>
 
           {business.industryName && (
@@ -288,17 +301,37 @@ function BusinessCard({ business }: { business: Business }) {
               {location}
             </p>
           )}
+
+          {/* Contextual hint for non-live states */}
+          {isPending && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Your listing is awaiting approval from your district admin. It&rsquo;s not yet
+              visible in the directory.
+            </p>
+          )}
+          {isDraft && (
+            <p className="mt-2 text-[11px] text-amber-600">
+              Your listing is a draft. Submit it to enter the review queue.
+            </p>
+          )}
+          {isRejected && (
+            <p className="mt-2 text-[11px] text-destructive">
+              Your listing was rejected. Edit it and resubmit to re-enter the review queue.
+            </p>
+          )}
         </div>
       </div>
 
       {/* Footer actions */}
       <div className="flex items-center gap-2 border-t border-border px-4 py-3 sm:px-5">
-        <Link
-          href={`/business/${business.slug}`}
-          className={`${buttonVariants({ variant: "outline", size: "sm" })} flex-1 justify-center`}
-        >
-          <Eye className="h-3.5 w-3.5" /> View
-        </Link>
+        {business.status === "APPROVED" && (
+          <Link
+            href={`/business/${business.slug}`}
+            className={`${buttonVariants({ variant: "outline", size: "sm" })} flex-1 justify-center`}
+          >
+            <Eye className="h-3.5 w-3.5" /> View
+          </Link>
+        )}
         <Link
           href={`/dashboard/businesses/${business.id}`}
           className={`${buttonVariants({ variant: "primary", size: "sm" })} flex-1 justify-center`}

@@ -16,7 +16,7 @@ const navLink =
 export async function SiteHeader() {
   const session = await auth();
   const user = session?.user;
-  const isAdmin = user?.role === "SUPER_ADMIN" || user?.role === "CLUB_ADMIN";
+  const isAdmin = user?.role === "MANAGEMENT" || user?.role === "DISTRICT_ADMIN";
   const isVerified = user?.status === "VERIFIED";
   const canMessage = isVerified;
   const unread = canMessage ? await messaging.countUnread(user) : 0;

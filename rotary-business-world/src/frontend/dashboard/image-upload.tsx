@@ -23,7 +23,8 @@ async function uploadFile(file: File, folder: string): Promise<string> {
 
 /**
  * Single-image uploader (logo or cover). Supports click and drag-and-drop.
- * Shows a hover overlay (Change / Remove) when an image is already set.
+ * When an image is set, shows an always-visible X (remove) button pinned top-right
+ * and a "Replace" link below — both reachable on touch/mobile.
  */
 export function ImageUpload({
   folder,
@@ -72,22 +73,20 @@ export function ImageUpload({
 
   return (
     <div>
-      <div
-        className={cn(
-          "group relative overflow-hidden rounded-[var(--radius)] border-2 transition-colors duration-200",
-          height,
-          dragging
-            ? "border-primary bg-primary/5"
-            : "border-dashed border-border bg-muted hover:border-primary/50",
-          busy && "pointer-events-none opacity-70",
-        )}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-      >
-        {value ? (
-          <>
-            {/* Preview */}
+      {value ? (
+        /* ── Has image ──────────────────────────────────────────── */
+        <div className={cn("flex", aspect === "square" ? "items-start gap-3" : "flex-col gap-2")}>
+          {/* Preview box */}
+          <div
+            className={cn(
+              "relative shrink-0 overflow-hidden rounded-[var(--radius)] border border-border",
+              height,
+              busy && "pointer-events-none opacity-70",
+            )}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+          >
             <Image
               src={toImageSrc(value) ?? value}
               alt=""
@@ -95,27 +94,42 @@ export function ImageUpload({
               className="object-cover"
               sizes={aspect === "square" ? "128px" : "500px"}
             />
-            {/* Hover overlay: Change / Remove */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/0 transition-colors duration-200 group-hover:bg-black/50">
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                aria-label="Change image"
-                className="hidden rounded-full border border-white/60 bg-black/40 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/60 group-hover:flex"
-              >
-                Change
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange("")}
-                aria-label="Remove image"
-                className="hidden rounded-full border border-white/60 bg-black/40 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/60 group-hover:flex"
-              >
-                Remove
-              </button>
-            </div>
-          </>
-        ) : (
+            {/* Always-visible X — reachable by tap on mobile */}
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              aria-label="Remove image"
+              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Replace link — always visible, tap-friendly */}
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            aria-label="Replace image"
+            className="mt-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-primary hover:underline focus-visible:outline-none focus-visible:underline"
+          >
+            {busy ? "Uploading…" : "Replace"}
+          </button>
+        </div>
+      ) : (
+        /* ── Empty state ────────────────────────────────────────── */
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-[var(--radius)] border-2 transition-colors duration-200",
+            height,
+            dragging
+              ? "border-primary bg-primary/5"
+              : "border-dashed border-border bg-muted hover:border-primary/50",
+            busy && "pointer-events-none opacity-70",
+          )}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+        >
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -139,8 +153,8 @@ export function ImageUpload({
               </>
             )}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <input
         ref={inputRef}
@@ -222,7 +236,7 @@ export function GalleryUpload({
               type="button"
               onClick={() => onChange(value.filter((u) => u !== url))}
               aria-label="Remove photo"
-              className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-opacity opacity-0 group-hover:opacity-100 hover:bg-black/80 focus-visible:opacity-100"
+              className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <X className="h-3.5 w-3.5" />
             </button>

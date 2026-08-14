@@ -7,6 +7,7 @@ import {
   Building2,
   LayoutDashboard,
   LogOut,
+  Store,
 } from "lucide-react";
 import { cn } from "@/shared/utils";
 import { Logo } from "@/frontend/brand/logo";
@@ -21,6 +22,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Verifications", href: "/admin/verifications", icon: BadgeCheck },
+  { label: "Listings", href: "/admin/listings", icon: Store },
   { label: "Districts & Clubs", href: "/admin/districts", icon: Building2, superAdminOnly: true },
 ];
 

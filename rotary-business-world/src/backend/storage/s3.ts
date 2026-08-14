@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { S3Client, PutObjectCommand, GetObjectCommand, NoSuchKey } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import type { StorageService } from "./types";
 
 /** AWS S3 storage for production (S3-compatible via optional S3_ENDPOINT override). */
@@ -36,28 +36,16 @@ export class S3StorageService implements StorageService {
     const key = `${folder}/${randomUUID()}.${ext}`;
     // No ACL: modern S3 buckets enforce "bucket owner enforced" (ACLs disabled).
     // Public read is granted by a bucket policy or CloudFront, not per-object ACLs.
+    // Keys are immutable UUIDs, so a 1-year browser + CDN cache is safe.
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
         Body: bytes,
         ContentType: contentType,
+        CacheControl: "public, max-age=31536000, immutable",
       }),
     );
     return { url: `https://${this.publicHost}/${key}`, key };
-  }
-
-  async get(key: string): Promise<{ bytes: Buffer; contentType?: string } | null> {
-    try {
-      const res = await this.client.send(
-        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
-      );
-      if (!res.Body) return null;
-      const raw = await res.Body.transformToByteArray();
-      return { bytes: Buffer.from(raw), contentType: res.ContentType };
-    } catch (err) {
-      if (err instanceof NoSuchKey) return null;
-      throw err;
-    }
   }
 }
