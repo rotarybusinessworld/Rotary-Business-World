@@ -17,7 +17,7 @@ export type BusinessHit = {
   id: string;
   name: string;
   slug: string;
-  logoUrl: string | null;
+  logoKey: string | null;
   city: string | null;
   country: string | null;
   industryName: string | null;

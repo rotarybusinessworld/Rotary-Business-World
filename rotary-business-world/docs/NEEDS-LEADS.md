@@ -19,8 +19,9 @@ side**:
 |---|---|---|
 | **1** | **Deep leaf taxonomy** | ~100k leaf nodes. Not "Automotive" — `Automotive › Tyres & Tubes › Truck Tyres › Radial Truck Tyres`. Matching happens at the leaf. |
 | **2** | **Sellers publish a product catalog, not a company category** | A seller doesn't pick one category. They list every specific product/service they supply. Leads match **catalog entries**, not companies. |
-| **3** | **Sellers declare serviceable geography** | Separate from where they're *located*. A Coimbatore wholesaler may serve all of Tamil Nadu, or all of India. Location ≠ reach. |
-| **4** | Buyer picks a category, then answers category-specific attributes | Quantity, spec, purpose. Free text is supplementary. |
+| **3** | **Sellers declare their trade role** | Manufacturer / Wholesaler / Retailer / Service Provider. IndiaMART surfaces this as a primary filter on every search result, because a bulk buyer and a walk-in buyer want completely different businesses. |
+| **4** | **Sellers declare serviceable geography** | Separate from where they're *located*. A Coimbatore wholesaler may serve all of Tamil Nadu, or all of India. Location ≠ reach. |
+| **5** | Buyer picks a category and a buying intent, then answers attributes | Quantity, spec, purpose. Free text is supplementary. |
 
 **The accuracy insight: precision comes from seller-side declaration granularity, not from
 parsing the buyer's text better.** You cannot match accurately against a business that has
@@ -45,7 +46,7 @@ digest are the easy parts.
 
 ---
 
-## 3. The four structural changes
+## 3. The five structural changes
 
 ### 3.1 🔑 Keystone: `BusinessOffering` — a seller catalog
 
@@ -93,7 +94,41 @@ your recall. A need at `Truck Tyres` matches only truck tyres — that's your pr
 Add `Category.synonyms String[]` (`"tyre"`, `"tire"`, `"tayar"`) for search and for the
 category picker's autocomplete.
 
-### 3.3 `Business.districtId` — denormalized
+### 3.3 🔑 Trade role — the second-strongest matching signal
+
+A buyer wanting **wholesale** tyres has zero interest in a retail tyre shop, and a walk-in buyer
+has no use for a manufacturer with a 500-unit minimum order. Category tells you *what*; trade role
+tells you *how they sell it*. Without it, half of every notification is structurally irrelevant no
+matter how deep the taxonomy goes.
+
+```prisma
+enum TradeRole {
+  MANUFACTURER       // makes it — incl. OEM / job work / custom production
+  WHOLESALER         // bulk supply, distribution, trading — for resale
+  RETAILER           // sells to end users, small quantity
+  SERVICE_PROVIDER   // professional/technical services — not a goods business
+}
+```
+
+**Four values, deliberately.** IndiaMART splits distributor/trader/supplier/importer separately;
+most users will not apply those distinctions consistently, and inconsistent seller data is worse
+than coarse seller data. Note that adding an enum value later is a cheap `ALTER TYPE … ADD VALUE`
+— **removing** one is not. Start tight.
+
+**Multi-select, and it lives on the offering.** A tyre company may manufacture truck tyres but only
+retail car tyres — the role is a property of *what they supply*, not of the company. Denormalise
+the union onto `Business.tradeRoles` for the directory card and the search facet, the same way
+`Business.categoryId` stays for display while offerings drive matching.
+
+`SERVICE_PROVIDER` exists because a Rotary directory is full of lawyers, accountants, doctors and
+consultants for whom retail/wholesale is meaningless. They pick one value and the rest of the
+system works unchanged.
+
+**This is mandatory data.** Enforce a non-empty array in the zod validator and the service layer —
+not a schema default. A business with no declared trade role cannot be matched correctly, so it
+must not be possible to create one.
+
+### 3.4 `Business.districtId` — denormalized
 
 Copy from `owner.rotaryInfo.districtId` at create time. Fixes the matching query, makes admin
 scoping one join shorter, and means a member changing district doesn't silently reassign their
@@ -101,7 +136,7 @@ listing. Already recommended in the architecture notes for exactly this reason.
 
 Also add `stateCode` — geography matching needs a middle tier between district and country.
 
-### 3.4 `serviceReach` — where a business *serves*, not where it *sits*
+### 3.5 `serviceReach` — where a business *serves*, not where it *sits*
 
 ```prisma
 enum ServiceReach { DISTRICT  STATE  NATIONAL  INTERNATIONAL }
@@ -159,6 +194,10 @@ model BusinessOffering {
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
+  /// How this business supplies THIS offering. Non-empty — enforced in zod + service layer.
+  /// A firm may manufacture truck tyres but only retail car tyres.
+  tradeRoles TradeRole[]
+
   /// Seller's own words: "Radial truck tyres, wholesale, 10-16 inch"
   title      String?
   /// Seller-supplied recall terms, lowercased on write
@@ -182,6 +221,9 @@ model Business {
   stateCode    String?                                   // NEW — middle geo tier
   serviceReach ServiceReach @default(DISTRICT)           // NEW
   receiveLeads Boolean      @default(true)               // NEW — opt-out toggle
+  /// Denormalized union of all offering tradeRoles. Display + search facet only;
+  /// matching always reads the offering. Recomputed whenever offerings change.
+  tradeRoles   TradeRole[]                               // NEW
 
   offerings    BusinessOffering[]
 
@@ -190,6 +232,8 @@ model Business {
 }
 
 enum ServiceReach { DISTRICT  STATE  NATIONAL  INTERNATIONAL }
+enum TradeRole    { MANUFACTURER  WHOLESALER  RETAILER  SERVICE_PROVIDER }
+enum TradeIntent  { BUY_RETAIL  BUY_WHOLESALE  MANUFACTURING  HIRE_SERVICE }
 
 // ─── NEEDS ───────────────────────────────────────────────────────────────────
 
@@ -204,6 +248,10 @@ model Need {
 
   categoryId  String                                     // leaf preferred, any level allowed
   category    Category    @relation(fields: [categoryId], references: [id])
+
+  /// What kind of transaction the buyer wants. Maps to seller TradeRoles — see §6.1.
+  /// Required, no default: guessing this wrong wastes every notification the need sends.
+  tradeIntent TradeIntent
 
   districtId  String                                     // buyer's district
   district    District    @relation(fields: [districtId], references: [id])
@@ -268,14 +316,25 @@ Category-first, IndiaMART-style. Free text is never a matching signal.
                  ("Truck Tyres" ranks above "Tyres & Tubes"; picking a parent is allowed
                   but shows "this will reach more businesses — pick a specific type for
                   better matches")
-2. Reach         "Where should this go?"  My district / My state / Anywhere in India / Worldwide
+2. Intent        "What are you looking for?"   ← REQUIRED, no default
+                   ○ Buying for resale / in bulk      → BUY_WHOLESALE
+                   ○ Buying for my own use            → BUY_RETAIL
+                   ○ Getting something made to order  → MANUFACTURING
+                   ○ Hiring a service                 → HIRE_SERVICE
+                 Plain language, never the enum name. This single answer removes more
+                 irrelevant recipients than any other field on the form.
+3. Reach         "Where should this go?"  My district / My state / Anywhere in India / Worldwide
                  → sets reachWanted. Default STATE.
-3. Quantity      short free text          "50 units", "wholesale", "one-off"
-4. Budget        optional min/max
-5. Notes         optional textarea        "Needed by month-end, must be BIS certified"
+4. Quantity      short free text          "50 units", "wholesale", "one-off"
+5. Budget        optional min/max
+6. Notes         optional textarea        "Needed by month-end, must be BIS certified"
                  Displayed to matched businesses. NOT parsed.
-6. Urgent        checkbox, rate-limited (see §7)
+7. Urgent        checkbox, rate-limited (see §7)
 ```
+
+Show a live recipient estimate under the form — *"about 12 businesses will see this"* — recomputed
+as category, intent and reach change. It teaches the taxonomy without a tutorial, and a member who
+sees "247 businesses" will narrow it themselves.
 
 **No AI in this path.** The category picker is a tree search with synonyms. If real usage later
 shows members fighting the picker, add an LLM-assisted *suggestion* on top — still confirmed by
@@ -291,6 +350,25 @@ agreements) → enqueue `match-need` → return. **No matching inline.**
 
 This is where accuracy lives. Two stages: a hard filter, then a score.
 
+### 6.1 ⚠️ Intent → trade role is asymmetric — do not use exact match
+
+The obvious implementation is `need.tradeIntent == offering.tradeRole`. **That is wrong** and will
+silently drop the best matches. A manufacturer selling direct *is* a wholesale source. Use this
+table:
+
+| Buyer intent | Matches seller roles | Reasoning |
+|---|---|---|
+| `BUY_WHOLESALE` | `WHOLESALER`, **`MANUFACTURER`** | Buying factory-direct in bulk is normal and often preferred |
+| `BUY_RETAIL` | `RETAILER` | A wholesaler with a 500-unit MOQ is useless to a walk-in buyer. Deliberately narrow. |
+| `MANUFACTURING` | `MANUFACTURER` | Custom production / OEM / job work. Only makers. |
+| `HIRE_SERVICE` | `SERVICE_PROVIDER` | |
+
+Encode it as a constant map in `backend/config/trade-matching.ts`, not inline in the query — it is
+business logic that will be tuned, and it needs to be greppable and testable.
+
+The **widened** matches score lower than exact ones (§6.3), so a true wholesaler still outranks a
+manufacturer for a wholesale request. The filter is generous; the ranking is precise.
+
 ### Stage 1 — hard filter (SQL)
 
 ```sql
@@ -303,6 +381,7 @@ WHERE  b.status       = 'APPROVED'
   AND  o."isActive"   = true
   AND  b."ownerId"   <> :needAuthorId              -- never notify the poster
   AND  c.path LIKE :needCategoryPath || '%'        -- subtree match
+  AND  o."tradeRoles" && :allowedRoles             -- array OVERLAP (&&), from the §6.1 map
   AND  (
         b."districtId" = :needDistrict                                        -- same district: always
      OR (:reachWanted >= 'STATE'    AND b."serviceReach" >= 'STATE'

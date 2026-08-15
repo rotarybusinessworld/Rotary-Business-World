@@ -1,9 +1,9 @@
-import bcrypt from "bcryptjs";
+import { hash, verify } from "@node-rs/bcrypt";
 
 export function hashPassword(plain: string): Promise<string> {
-  return bcrypt.hash(plain, 12);
+  return hash(plain, 12);
 }
 
-export function verifyPassword(plain: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(plain, hash);
+export function verifyPassword(plain: string, hashed: string): Promise<boolean> {
+  return verify(plain, hashed);
 }

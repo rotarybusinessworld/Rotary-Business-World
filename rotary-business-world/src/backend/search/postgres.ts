@@ -183,7 +183,7 @@ export class PostgresSearchService implements SearchService {
 
     // ── Queries ─────────────────────────────────────────────────────────────
     const rows = await db.$queryRaw<BusinessHit[]>`
-      SELECT b."id", b."name", b."slug", b."logoUrl", b."city", b."country",
+      SELECT b."id", b."name", b."slug", b."logoKey", b."city", b."country",
              b."industryName", b."categoryName",
              u."status" = 'VERIFIED' AS "ownerVerified"
       FROM   "Business" b
@@ -211,7 +211,7 @@ export class PostgresSearchService implements SearchService {
         id: r.id,
         name: r.name,
         slug: r.slug,
-        logoUrl: r.logoUrl,
+        logoKey: r.logoKey,
         city: r.city,
         country: r.country,
         industryName: r.industryName,

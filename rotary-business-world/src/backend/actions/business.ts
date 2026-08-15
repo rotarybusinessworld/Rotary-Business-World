@@ -45,8 +45,8 @@ function toInput(
     description: orNull(formData.get("description")),
     industryId: orNull(formData.get("industryId")),
     categoryId: orNull(formData.get("categoryId")),
-    logoUrl: orNull(formData.get("logoUrl")),
-    coverUrl: orNull(formData.get("coverUrl")),
+    logoKey: orNull(formData.get("logoKey")),
+    coverKey: orNull(formData.get("coverKey")),
     website: orNull(formData.get("website")),
     email: orNull(formData.get("email")),
     phone: orNull(formData.get("phone")),
@@ -56,7 +56,7 @@ function toInput(
     country: orNull(formData.get("country")),
     linkedin: orNull(formData.get("linkedin")),
     instagram: orNull(formData.get("instagram")),
-    gallery: parseGallery(formData.get("galleryUrls")),
+    gallery: parseGallery(formData.get("galleryKeys")),
     // Parse discount percent as a number; orNull would return string | null.
     discountPercent: (() => {
       const raw = formData.get("discountPercent");

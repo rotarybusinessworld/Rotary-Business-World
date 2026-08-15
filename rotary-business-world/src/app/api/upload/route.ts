@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/backend/auth";
+import { db } from "@/backend/db";
 import { getStorageService } from "@/backend/storage";
 import { logger } from "@/backend/logger";
 
@@ -39,16 +40,21 @@ export async function POST(request: Request) {
 
   const bytes = Buffer.from(await file.arrayBuffer());
   try {
-    const { url } = await getStorageService().put({
+    const { key } = await getStorageService().put({
       folder,
       bytes,
       contentType: file.type,
       ext,
     });
-    return NextResponse.json({ url });
+
+    // Record the upload so orphaned objects can be reconciled later.
+    await db.mediaObject.create({
+      data: { key, mimeType: file.type, bytes: file.size },
+    });
+
+    // Return the key — callers resolve it to a URL using toImageSrc() / keyToUrl().
+    return NextResponse.json({ key });
   } catch (err) {
-    // S3 down / bad creds / bucket policy — degrade to a clean 502 the client can
-    // show as "upload failed", never an unhandled 500 / Internal Server Error.
     logger.error({ err, folder }, "image upload failed");
     return NextResponse.json(
       { error: "Upload failed. Please try again later." },

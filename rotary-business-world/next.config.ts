@@ -7,7 +7,7 @@ const s3Host = process.env.NEXT_PUBLIC_S3_PUBLIC_HOSTNAME;
 const nextConfig: NextConfig = {
   // Keep pino out of the bundle — it resolves worker/transport files at runtime
   // that don't survive bundling. Loaded as a normal Node dependency instead.
-  serverExternalPackages: ["pino", "pino-pretty"],
+  serverExternalPackages: ["pino", "pino-pretty", "@node-rs/bcrypt"],
   images: {
     // Keep the Next.js image optimizer disabled. The app serves all S3 images
     // through the authenticated proxy at /api/images/[...key] (see route.ts).

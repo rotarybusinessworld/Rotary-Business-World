@@ -13,9 +13,9 @@ export function BusinessCard({ hit }: { hit: BusinessHit }) {
       className="group flex gap-4 rounded-[var(--radius)] border border-border bg-card p-4 shadow-[var(--shadow-card)] transition-colors hover:border-primary/40"
     >
       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius)] bg-muted">
-        {hit.logoUrl ? (
+        {hit.logoKey ? (
           <Image
-            src={toImageSrc(hit.logoUrl)!}
+            src={toImageSrc(hit.logoKey)!}
             alt=""
             width={56}
             height={56}

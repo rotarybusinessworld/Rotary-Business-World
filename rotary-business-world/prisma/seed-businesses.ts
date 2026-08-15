@@ -5,7 +5,7 @@
  * Run: node --env-file=.env --import tsx prisma/seed-businesses.ts
  */
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { hash as bcryptHash } from "@node-rs/bcrypt";
 import { slugify } from "../src/shared/utils";
 
 const db = new PrismaClient();
@@ -372,7 +372,7 @@ async function findOrCreateCategory(name: string, industryId: string) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  const passwordHash = await bcrypt.hash("Demo@1234", 12);
+  const passwordHash = await bcryptHash("Demo@1234", 12);
 
   // Create verified members
   const users: { id: string }[] = [];

@@ -421,3 +421,14 @@ service.
   Management bypass is an explicit branch that writes an `audit_log` row — never an unscoped query.
 - **Money and access changes go in one transaction** with their audit row.
 - **New side effects go in a job**, not inline in a request, once the worker exists.
+- **No "pragmatic for now" shortcuts.** This is a production application. Every fix must be the
+  correct production fix — not a workaround that defers the real problem. If the right fix requires
+  more time or a larger change, say so and plan it properly rather than shipping something that will
+  break under real load or real users. A shortcut that works in dev and fails in production is worse
+  than not shipping at all. Concrete examples of what this means:
+  - **Stale JWT → re-read DB on every request** is a shortcut. The correct fix is to update the
+    session immediately after the state change (Auth.js `unstable_update()` in the API route) so
+    the JWT is always fresh. The long-term architecture (Tier 1 #2) is a Redis-cached `getActor()`
+    invalidated inside the transaction that changes the state.
+  - **"Works on my machine"** is not a signal that something is production-safe. Check: does it
+    work with a stale cookie? After a restart? Across two replicas? Under concurrent writes?

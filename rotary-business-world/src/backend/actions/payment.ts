@@ -1,33 +1,28 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { unstable_update } from "@/backend/auth";
 import { requireUser } from "@/backend/auth-helpers";
-import { recordMembershipPayment } from "@/backend/services/payment";
+import { recordDemoPayment } from "@/backend/services/payment";
 
 /**
- * Demo-mode payment: skips Stripe and marks the current user as paid.
+ * Demo-mode payment: skips Razorpay and marks the current user as paid.
  *
- * Fails CLOSED: only permitted when Stripe is NOT configured AND we're not in
- * production. Otherwise a deploy that forgot to set STRIPE_SECRET_KEY would let
- * anyone POST this action and get free access. The guard runs server-side (not
- * just in the UI) because every `"use server"` export is a callable endpoint.
+ * Fails CLOSED: only permitted when Razorpay is NOT configured AND we're not
+ * in production. Otherwise a deploy that forgot to set RAZORPAY_KEY_ID would
+ * let anyone POST this action and get free access. The guard runs server-side
+ * (not just in the UI) because every `"use server"` export is a callable endpoint.
  */
 export async function demoCompletePayment(_fd: FormData) {
   const user = await requireUser();
 
   const demoAllowed =
-    !process.env.STRIPE_SECRET_KEY && process.env.NODE_ENV !== "production";
+    !process.env.RAZORPAY_KEY_ID?.trim() && process.env.NODE_ENV !== "production";
   if (!demoAllowed) {
     redirect("/onboarding/payment");
   }
 
-  // Mirrors the $50 Stripe line item so demo records look like real ones.
-  await recordMembershipPayment({
-    userId: user.id,
-    source: "DEMO",
-    amount: 5000,
-    currency: "usd",
-    actorId: user.id,
-  });
+  await recordDemoPayment({ userId: user.id, actorId: user.id });
+  await unstable_update({ user: { status: "PENDING_VERIFICATION" } });
   redirect("/dashboard");
 }

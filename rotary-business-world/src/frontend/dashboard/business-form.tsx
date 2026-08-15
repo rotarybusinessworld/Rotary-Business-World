@@ -18,8 +18,8 @@ export type BusinessDefaults = {
   description?: string | null;
   industryId?: string | null;
   categoryId?: string | null;
-  logoUrl?: string | null;
-  coverUrl?: string | null;
+  logoKey?: string | null;
+  coverKey?: string | null;
   website?: string | null;
   email?: string | null;
   phone?: string | null;
@@ -59,8 +59,8 @@ export function BusinessForm({
 }) {
   const [state, formAction] = useActionState<BusinessFormState, FormData>(action, {});
   const [industryId, setIndustryId] = useState(defaults.industryId ?? "");
-  const [logoUrl, setLogoUrl] = useState(defaults.logoUrl ?? "");
-  const [coverUrl, setCoverUrl] = useState(defaults.coverUrl ?? "");
+  const [logoKey, setLogoKey] = useState(defaults.logoKey ?? "");
+  const [coverKey, setCoverKey] = useState(defaults.coverKey ?? "");
   const [gallery, setGallery] = useState<string[]>(defaults.gallery ?? []);
 
   const categories = useMemo(
@@ -87,8 +87,8 @@ export function BusinessForm({
             <Label>Logo</Label>
             <ImageUpload
               folder="logos"
-              value={logoUrl}
-              onChange={setLogoUrl}
+              value={logoKey}
+              onChange={setLogoKey}
               hint="Square, e.g. 400×400 px"
             />
           </div>
@@ -96,8 +96,8 @@ export function BusinessForm({
             <Label>Cover image</Label>
             <ImageUpload
               folder="covers"
-              value={coverUrl}
-              onChange={setCoverUrl}
+              value={coverKey}
+              onChange={setCoverKey}
               aspect="wide"
               hint="Recommended ~1600×500 px"
             />
@@ -310,10 +310,10 @@ export function BusinessForm({
         </div>
       </div>
 
-      {/* Hidden carriers for uploaded URLs */}
-      <input type="hidden" name="logoUrl" value={logoUrl} />
-      <input type="hidden" name="coverUrl" value={coverUrl} />
-      <input type="hidden" name="galleryUrls" value={JSON.stringify(gallery)} />
+      {/* Hidden carriers for uploaded keys */}
+      <input type="hidden" name="logoKey" value={logoKey} />
+      <input type="hidden" name="coverKey" value={coverKey} />
+      <input type="hidden" name="galleryKeys" value={JSON.stringify(gallery)} />
 
       <div className="border-t border-border pt-5">
         <SubmitButton label={submitLabel} />

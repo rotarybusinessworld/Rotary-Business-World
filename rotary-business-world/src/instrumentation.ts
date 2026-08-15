@@ -17,7 +17,7 @@ export async function register() {
   if (missing.length > 0) {
     logger.warn(
       { missing },
-      "production is missing recommended integrations (Stripe/S3/AUTH_URL) — payments and/or uploads will be degraded until configured",
+      "production is missing recommended integrations (Razorpay/S3/AUTH_URL) — payments and/or uploads will be degraded until configured",
     );
   }
   logger.info({ nodeEnv: env.NODE_ENV }, "environment validated");

@@ -1,5 +1,6 @@
 import { db } from "@/backend/db";
 import { getAdminScope } from "@/backend/auth-helpers";
+import { toImageSrc } from "@/shared/image";
 import { Badge } from "@/frontend/ui/badge";
 import { Button } from "@/frontend/ui/button";
 import { Avatar } from "@/frontend/ui/avatar";
@@ -85,7 +86,7 @@ export default async function ListingsPage() {
             ) : (
               pending.map((listing) => {
                 const ownerName = listing.owner.profile?.fullName ?? listing.owner.email;
-                const thumbnail = listing.images[0]?.url;
+                const thumbnail = toImageSrc(listing.images[0]?.key);
                 return (
                   <Row key={listing.id}>
                     <Td>

@@ -5,7 +5,7 @@ import { db } from "@/backend/db";
 import { verifyPassword } from "@/backend/password";
 import { loginSchema } from "@/shared/validators";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   trustHost: true,
@@ -39,12 +39,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    // Persist identity fields onto the JWT at sign-in.
-    async jwt({ token, user }) {
+    // Persist identity fields onto the JWT at sign-in; apply partial updates
+    // written by unstable_update() (e.g. status change after payment).
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id as string;
         token.role = user.role;
         token.status = user.status;
+      }
+      if (trigger === "update" && session?.user) {
+        if (session.user.status !== undefined) token.status = session.user.status;
+        if (session.user.role !== undefined) token.role = session.user.role;
       }
       return token;
     },

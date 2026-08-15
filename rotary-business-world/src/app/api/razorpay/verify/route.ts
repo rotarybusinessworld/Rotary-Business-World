@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
-import { auth } from "@/backend/auth";
-import { recordMembershipPayment } from "@/backend/services/payment";
+import { auth, unstable_update } from "@/backend/auth";
+import { settlePayment } from "@/backend/services/payment";
 
 const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  // Razorpay signature: HMAC-SHA256 of "order_id|payment_id" with key_secret
+  // Razorpay signature: HMAC-SHA256 of "order_id|payment_id" with key_secret.
   const expected = createHmac("sha256", KEY_SECRET)
     .update(`${razorpay_order_id}|${razorpay_payment_id}`)
     .digest("hex");
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  // Fetch amount + currency from Razorpay so we record the authoritative values
+  // Fetch authoritative amount + currency from Razorpay.
   const credentials = Buffer.from(
     `${process.env.RAZORPAY_KEY_ID}:${KEY_SECRET}`,
   ).toString("base64");
@@ -50,19 +50,26 @@ export async function POST(req: Request) {
     `https://api.razorpay.com/v1/payments/${razorpay_payment_id}`,
     { headers: { Authorization: `Basic ${credentials}` } },
   );
-  const payment = paymentRes.ok
-    ? ((await paymentRes.json()) as { amount: number; currency: string })
-    : { amount: 0, currency: "INR" };
+  if (!paymentRes.ok) {
+    return NextResponse.json(
+      { error: "Could not fetch payment details from Razorpay — please retry" },
+      { status: 502 },
+    );
+  }
+  const payment = (await paymentRes.json()) as { amount: number; currency: string };
 
-  await recordMembershipPayment({
+  await settlePayment({
     userId: session.user.id,
-    source: "RAZORPAY",
+    razorpayOrderId: razorpay_order_id,
+    razorpayPaymentId: razorpay_payment_id,
     amount: payment.amount,
     currency: payment.currency,
-    razorpayPaymentId: razorpay_payment_id,
-    razorpayOrderId: razorpay_order_id,
     actorId: session.user.id,
   });
+
+  // Rewrite the JWT immediately so the client's next request sees
+  // PENDING_VERIFICATION without a stale-token redirect loop.
+  await unstable_update({ user: { status: "PENDING_VERIFICATION" } });
 
   return NextResponse.json({ ok: true });
 }

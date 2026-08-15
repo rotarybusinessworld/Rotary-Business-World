@@ -20,8 +20,8 @@ export type BusinessInput = {
   description?: string | null;
   industryId?: string | null;
   categoryId?: string | null;
-  logoUrl?: string | null;
-  coverUrl?: string | null;
+  logoKey?: string | null;
+  coverKey?: string | null;
   website?: string | null;
   email?: string | null;
   phone?: string | null;
@@ -73,8 +73,8 @@ function scalarFields(input: BusinessInput) {
   return {
     name: input.name,
     description: input.description ?? null,
-    logoUrl: input.logoUrl ?? null,
-    coverUrl: input.coverUrl ?? null,
+    logoKey: input.logoKey ?? null,
+    coverKey: input.coverKey ?? null,
     website: input.website ?? null,
     email: input.email ?? null,
     phone: input.phone ?? null,
@@ -92,7 +92,7 @@ function scalarFields(input: BusinessInput) {
 function galleryRows(gallery: string[] | undefined) {
   return (gallery ?? [])
     .slice(0, MAX_GALLERY)
-    .map((url, sortOrder) => ({ url, sortOrder }));
+    .map((key, sortOrder) => ({ key, sortOrder }));
 }
 
 /** Create a listing owned by the actor. Requires a VERIFIED member.
@@ -158,8 +158,8 @@ export async function updateBusiness(
     (input.description ?? null) !== owned.description ||
     (input.industryId ?? null) !== owned.industryId ||
     (input.categoryId ?? null) !== owned.categoryId ||
-    (input.logoUrl ?? null) !== owned.logoUrl ||
-    (input.coverUrl ?? null) !== owned.coverUrl ||
+    (input.logoKey ?? null) !== owned.logoKey ||
+    (input.coverKey ?? null) !== owned.coverKey ||
     (input.addressLine ?? null) !== owned.addressLine ||
     (input.city ?? null) !== owned.city ||
     (input.country ?? null) !== owned.country ||
@@ -168,8 +168,8 @@ export async function updateBusiness(
       (await db.businessImage.findMany({
         where: { businessId: id },
         orderBy: { sortOrder: "asc" },
-        select: { url: true },
-      })).map((img) => img.url),
+        select: { key: true },
+      })).map((img) => img.key),
     );
 
   // APPROVED: re-enter moderation on material changes (prevents "moderate-then-swap").

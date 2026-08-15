@@ -18,7 +18,7 @@ export async function SiteHeader() {
   const user = session?.user;
   const isAdmin = user?.role === "MANAGEMENT" || user?.role === "DISTRICT_ADMIN";
   const isVerified = user?.status === "VERIFIED";
-  const canMessage = isVerified;
+  const canMessage = isVerified && !isAdmin;
   const unread = canMessage ? await messaging.countUnread(user) : 0;
 
   // Profile photo lives on the Profile model, not the JWT session
@@ -73,11 +73,13 @@ export async function SiteHeader() {
 
           {/* Desktop nav links */}
           <nav className="hidden items-center gap-0.5 md:flex">
-            <Link href="/directory" className={navLink}>
-              <Compass className="h-3.5 w-3.5" />
-              Directory
-            </Link>
-            {user && (
+            {!isAdmin && (
+              <Link href="/directory" className={navLink}>
+                <Compass className="h-3.5 w-3.5" />
+                Directory
+              </Link>
+            )}
+            {user && !isAdmin && (
               <Link href="/dashboard" className={navLink}>
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 Dashboard

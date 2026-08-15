@@ -116,7 +116,7 @@ export function MobileNav({
                         {userName}
                       </p>
                     )}
-                    <p className="text-[11px] text-white/45">Signed in as member</p>
+                    <p className="text-[11px] text-white/45">{isAdmin ? "Signed in as management" : "Signed in as member"}</p>
                   </div>
                 </div>
               )}
@@ -128,16 +128,18 @@ export function MobileNav({
 
               {/* Nav links */}
               <nav className="flex flex-col gap-0.5">
-                <Link
-                  href="/directory"
-                  onClick={close}
-                  className="group flex min-h-[48px] items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
-                >
-                  <Search className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
-                  Directory
-                </Link>
+                {!isAdmin && (
+                  <Link
+                    href="/directory"
+                    onClick={close}
+                    className="group flex min-h-[48px] items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
+                  >
+                    <Search className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
+                    Directory
+                  </Link>
+                )}
 
-                {isAuthed && userId && (
+                {isAuthed && userId && !isAdmin && (
                   <Link
                     href={`/member/${userId}`}
                     onClick={close}
@@ -148,7 +150,7 @@ export function MobileNav({
                   </Link>
                 )}
 
-                {isVerified && (
+                {isVerified && !isAdmin && (
                   <Link
                     href="/dashboard/profile"
                     onClick={close}
@@ -159,7 +161,7 @@ export function MobileNav({
                   </Link>
                 )}
 
-                {isAuthed && (
+                {isAuthed && !isAdmin && (
                   <Link
                     href="/dashboard"
                     onClick={close}

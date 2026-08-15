@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/backend/auth";
 import { db } from "@/backend/db";
+import { createOrderPayment } from "@/backend/services/payment";
 
 const KEY_ID = process.env.RAZORPAY_KEY_ID;
 const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -33,7 +34,7 @@ export async function POST() {
       amount: AMOUNT_PAISE,
       currency: "INR",
       receipt: `rbw_${session.user.id.slice(-8)}`,
-      // Embedded so the webhook can map order → user without a DB lookup
+      // Embedded so the webhook can map order → user without a DB lookup.
       notes: { userId: session.user.id },
     }),
   });
@@ -45,6 +46,16 @@ export async function POST() {
   }
 
   const order = (await res.json()) as { id: string; amount: number; currency: string };
+
+  // Write the Payment row NOW — before returning the order ID to the client.
+  // This is the reconciliation fix: if the member pays but the webhook is lost,
+  // the CREATED row proves they started a payment and support can settle manually.
+  await createOrderPayment({
+    userId: session.user.id,
+    razorpayOrderId: order.id,
+    amount: order.amount,
+    currency: order.currency,
+  });
 
   return NextResponse.json({
     orderId: order.id,

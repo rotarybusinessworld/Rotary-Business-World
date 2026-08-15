@@ -29,10 +29,12 @@ const NAV: NavItem[] = [
 export function AdminSidebar({
   isSuperAdmin,
   roleLabel,
+  signOutAction,
   onNavigate,
 }: {
   isSuperAdmin: boolean;
   roleLabel: string;
+  signOutAction: () => Promise<void>;
   /** Called when a nav link is clicked — used to close the mobile drawer. */
   onNavigate?: () => void;
 }) {
@@ -98,14 +100,15 @@ export function AdminSidebar({
             {roleLabel}
           </span>
         </div>
-        <Link
-          href="/dashboard"
-          onClick={onNavigate}
-          className="flex items-center gap-3 rounded-[10px] px-3.5 py-2.5 text-[13px] text-white/40 transition-colors hover:bg-white/[0.07] hover:text-white/70"
-        >
-          <LogOut className="h-3.5 w-3.5 shrink-0 rotate-180" />
-          Back to site
-        </Link>
+        <form action={signOutAction}>
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 rounded-[10px] px-3.5 py-2.5 text-[13px] text-white/40 transition-colors hover:bg-white/[0.07] hover:text-white/70"
+          >
+            <LogOut className="h-3.5 w-3.5 shrink-0" />
+            Sign out
+          </button>
+        </form>
       </div>
     </div>
   );

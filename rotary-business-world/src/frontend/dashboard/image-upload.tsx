@@ -17,8 +17,8 @@ async function uploadFile(file: File, folder: string): Promise<string> {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(data.error ?? "Upload failed");
   }
-  const data = (await res.json()) as { url: string };
-  return data.url;
+  const data = (await res.json()) as { key: string };
+  return data.key;
 }
 
 /**

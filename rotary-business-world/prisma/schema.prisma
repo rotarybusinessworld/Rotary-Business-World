@@ -92,7 +92,7 @@ model Profile {
   userId    String  @unique
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName  String
-  photoUrl  String?
+  photoUrl  String?  // TODO Day 4b: rename to photoKey once profile upload migrated
   bio       String?
   phone     String?
   whatsapp  String?
@@ -220,8 +220,8 @@ model Business {
   name        String
   slug        String         @unique
   description String?
-  logoUrl     String?
-  coverUrl    String?
+  logoKey     String?        // storage key, e.g. "logos/uuid.jpg"; resolve to URL at read time
+  coverKey    String?
   industryId  String?
   industry    Industry?      @relation(fields: [industryId], references: [id])
   categoryId  String?
@@ -270,10 +270,25 @@ model BusinessImage {
   id         String   @id @default(cuid())
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  url        String
+  key        String   // storage key; resolve to URL at read time via keyToUrl()
   sortOrder  Int      @default(0)
 
   @@index([businessId])
+}
+
+/// Tracks every file uploaded to object storage. Not FK-linked to other models —
+/// identity is the key itself. Enables reconciliation and future image derivatives.
+model MediaObject {
+  id        String   @id @default(cuid())
+  key       String   @unique // storage key, e.g. "logos/uuid.jpg"
+  mimeType  String?
+  bytes     Int?
+  width     Int?
+  height    Int?
+  blurhash  String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model VerificationRequest {
@@ -371,43 +386,57 @@ model Review {
 // ---------------------------------------------------------------------------
 
 enum PaymentStatus {
-  COMPLETED
-  PENDING
+  CREATED     // order created, awaiting capture
+  AUTHORIZED
+  CAPTURED    // money received; triggers PENDING_VERIFICATION
   FAILED
+  REFUNDED
 }
 
 enum PaymentSource {
-  STRIPE
   DEMO
   RAZORPAY
 }
 
-/// One membership payment. Successful capture moves User.status → PENDING_VERIFICATION.
+/// One membership payment. Row is written at order-create time (status CREATED)
+/// and updated to CAPTURED when the webhook/verify confirms settlement.
 model Payment {
-  id                      String        @id @default(cuid())
-  userId                  String
-  user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  source                  PaymentSource @default(STRIPE)
-  // Unique per Stripe checkout session — this is what makes the webhook and the
-  // success page idempotent (nulls allowed for DEMO). A duplicate delivery upserts
-  // to a no-op instead of creating a second row.
-  stripeCheckoutSessionId String?       @unique
-  stripePaymentIntentId   String?
-  // Razorpay equivalents (unique so both the verify callback and the webhook dedup correctly)
-  razorpayPaymentId       String?       @unique
-  razorpayOrderId         String?
-  amount                  Int           // minor units (paise or cents), from payment response
-  currency                String        // ISO 4217, e.g. "INR" or "usd"
-  status                  PaymentStatus @default(COMPLETED)
-  paidAt                  DateTime      @default(now())
-  createdAt               DateTime      @default(now())
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source            PaymentSource @default(RAZORPAY)
+  razorpayOrderId   String?       @unique // null for DEMO; set at order creation for Razorpay
+  razorpayPaymentId String?       @unique // null until capture
+  amount            Int           // minor units (paise), from payment response
+  currency          String        // ISO 4217, e.g. "INR"
+  status            PaymentStatus @default(CREATED)
+  settledAt         DateTime?     // set when status → CAPTURED
+  createdAt         DateTime      @default(now())
 
   @@index([userId])
+  @@index([status, createdAt])
+}
+
+/// Append-only log of every inbound webhook delivery. Used for idempotency:
+/// a duplicate delivery is detected via the unique eventId and short-circuited
+/// before any business logic runs.
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String                       // "razorpay"
+  eventId     String    @unique            // provider-scoped unique key, e.g. "payment.captured:{paymentId}"
+  eventType   String
+  payload     Json
+  status      String    @default("RECEIVED")
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  error       String?
+
+  @@index([provider, receivedAt])
 }
 
 /// Append-only record of sensitive actions (money, verification, admin).
 /// Never updated or deleted in code. `actorId` is nullable so system events (the
-/// Stripe webhook) and history after a user is deleted both survive.
+/// webhook) and history after a user is deleted both survive.
 model AuditLog {
   id         String   @id @default(cuid())
   actorId    String?

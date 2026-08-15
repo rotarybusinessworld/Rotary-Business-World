@@ -37,9 +37,9 @@ export function DirectoryCard({
       <div className="flex gap-4 p-4 sm:p-5">
         {/* Logo box */}
         <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius)] bg-muted">
-          {hit.logoUrl ? (
+          {hit.logoKey ? (
             <Image
-              src={toImageSrc(hit.logoUrl)!}
+              src={toImageSrc(hit.logoKey)!}
               alt=""
               width={56}
               height={56}

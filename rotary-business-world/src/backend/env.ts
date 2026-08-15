@@ -40,9 +40,11 @@ const baseSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   S3_BUCKET: z.string().optional(),
   NEXT_PUBLIC_S3_PUBLIC_HOSTNAME: z.string().optional(),
-  // Stripe group — optional in dev (unset ⇒ demo mode).
-  STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  // Razorpay group — optional in dev (unset ⇒ demo mode).
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  RAZORPAY_AMOUNT_PAISE: z.string().optional(),
   // Email (not yet implemented).
   EMAIL_FROM: z.string().optional(),
   SMTP_URL: z.string().optional(),
@@ -70,7 +72,7 @@ export const env = parseEnv();
  * Returns the list of missing ones (empty in non-production) so the caller can
  * log a loud warning WITHOUT aborting startup.
  *
- * These are deliberately not fatal: missing Stripe only 503s the payment routes
+ * These are deliberately not fatal: missing Razorpay only 503s the payment routes
  * (demo mode is already refused in production), and missing S3 degrades uploads
  * to local disk. Neither makes the app unsafe or unable to serve pages — so a
  * misconfiguration here should be visible in logs, not a full outage. The truly
@@ -81,8 +83,9 @@ export function missingProductionEnv(): string[] {
 
   const recommended: Array<[keyof Env, string]> = [
     ["AUTH_URL", "AUTH_URL (deployed base URL)"],
-    ["STRIPE_SECRET_KEY", "Stripe secret key"],
-    ["STRIPE_WEBHOOK_SECRET", "Stripe webhook secret"],
+    ["RAZORPAY_KEY_ID", "Razorpay key ID"],
+    ["RAZORPAY_KEY_SECRET", "Razorpay key secret"],
+    ["RAZORPAY_WEBHOOK_SECRET", "Razorpay webhook secret"],
     ["AWS_REGION", "AWS region"],
     ["AWS_ACCESS_KEY_ID", "AWS access key id"],
     ["AWS_SECRET_ACCESS_KEY", "AWS secret access key"],

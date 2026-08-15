@@ -11,11 +11,13 @@ export function AdminShell({
   isSuperAdmin,
   userName,
   roleLabel,
+  signOutAction,
   children,
 }: {
   isSuperAdmin: boolean;
   userName: string;
   roleLabel: string;
+  signOutAction: () => Promise<void>;
   children: React.ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -38,6 +40,7 @@ export function AdminShell({
         <AdminSidebar
           isSuperAdmin={isSuperAdmin}
           roleLabel={roleLabel}
+          signOutAction={signOutAction}
         />
       </aside>
 
@@ -70,6 +73,7 @@ export function AdminShell({
             <AdminSidebar
               isSuperAdmin={isSuperAdmin}
               roleLabel={roleLabel}
+              signOutAction={signOutAction}
               onNavigate={close}
             />
           </div>
