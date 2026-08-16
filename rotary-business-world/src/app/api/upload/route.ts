@@ -3,6 +3,7 @@ import { auth } from "@/backend/auth";
 import { db } from "@/backend/db";
 import { getStorageService } from "@/backend/storage";
 import { logger } from "@/backend/logger";
+import { checkRateLimit } from "@/backend/rate-limit";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED: Record<string, string> = {
@@ -17,6 +18,11 @@ export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user || session.user.status !== "VERIFIED") {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+  }
+
+  const { allowed } = await checkRateLimit(`upload:${session.user.id}`, 10, 60);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests, slow down" }, { status: 429 });
   }
 
   const form = await request.formData();

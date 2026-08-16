@@ -4,6 +4,7 @@ import type { Role, UserStatus } from "@prisma/client";
 import { db } from "@/backend/db";
 import { verifyPassword } from "@/backend/password";
 import { loginSchema } from "@/shared/validators";
+import { checkRateLimit } from "@/backend/rate-limit";
 
 export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   session: { strategy: "jwt" },
@@ -18,6 +19,15 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
+
+        // 5 attempts per 60s per email. Returns null (same as bad password) to
+        // avoid distinguishing rate-limit from auth failure.
+        const { allowed } = await checkRateLimit(
+          `login:${parsed.data.email.toLowerCase()}`,
+          5,
+          60,
+        );
+        if (!allowed) return null;
 
         const user = await db.user.findUnique({
           where: { email: parsed.data.email.toLowerCase() },

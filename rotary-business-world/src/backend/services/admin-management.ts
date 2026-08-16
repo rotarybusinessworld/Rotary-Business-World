@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/backend/db";
-import { assertManagement, type Actor } from "@/backend/actor";
+import { assertManagement, invalidateActor, type Actor } from "@/backend/actor";
 import { hashPassword } from "@/backend/password";
 import { auditCreate } from "@/backend/audit";
 import { ConflictError, NotFoundError } from "@/backend/errors";
@@ -241,6 +241,7 @@ export async function revokeDistrictAdmin(
       metadata: { priorDistrictId: target.managedDistrictId },
     }),
   ]);
+  await invalidateActor(userId);
 }
 
 /** Move a district admin to a different district. */
@@ -278,4 +279,5 @@ export async function reassignDistrictAdmin(
       metadata: { fromDistrictId: target.managedDistrictId, toDistrictId: district.id },
     }),
   ]);
+  await invalidateActor(userId);
 }

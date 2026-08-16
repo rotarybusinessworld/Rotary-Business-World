@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/backend/auth";
 import { db } from "@/backend/db";
 import { createOrderPayment } from "@/backend/services/payment";
+import { checkRateLimit } from "@/backend/rate-limit";
 
 const KEY_ID = process.env.RAZORPAY_KEY_ID;
 const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -16,6 +17,11 @@ export async function POST() {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+  }
+
+  const { allowed } = await checkRateLimit(`order:${session.user.id}`, 3, 60);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests, slow down" }, { status: 429 });
   }
 
   const profile = await db.profile.findUnique({

@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/backend/db";
 import { verifyAgainstRoster } from "@/backend/verification";
-import { assertAdmin, type Actor } from "@/backend/actor";
+import { assertAdmin, invalidateActor, type Actor } from "@/backend/actor";
 import { auditCreate } from "@/backend/audit";
 import { ForbiddenError, NotFoundError } from "@/backend/errors";
 
@@ -118,6 +118,7 @@ export async function approveVerification(
       metadata: { requestId, matchedRosterId },
     }),
   ]);
+  await invalidateActor(request.userId);
 }
 
 /**
@@ -174,4 +175,5 @@ export async function rejectVerification(
       metadata: { requestId, note: note?.trim() || null },
     }),
   ]);
+  await invalidateActor(request.userId);
 }

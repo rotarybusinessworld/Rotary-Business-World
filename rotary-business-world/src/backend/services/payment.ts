@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/backend/db";
+import { invalidateActor } from "@/backend/actor";
 import { auditCreate } from "@/backend/audit";
-import { assertTransition } from "@/backend/state/user-status";
 
 /**
  * Write a CREATED payment row when the Razorpay order is first generated.
@@ -65,7 +65,7 @@ export async function settlePayment(
     actorId = null,
   } = input;
 
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const existing = await tx.payment.findUnique({
       where: { razorpayOrderId },
       select: { id: true, status: true },
@@ -104,8 +104,11 @@ export async function settlePayment(
       where: { id: userId },
       select: { status: true },
     });
-    if (user) {
-      assertTransition(user.status, "PENDING_VERIFICATION");
+    // Only advance to PENDING_VERIFICATION from pre-payment states. If the user
+    // is already PENDING_VERIFICATION or beyond (e.g. approved while a delayed
+    // duplicate webhook was in-flight), skip the status update — the payment
+    // CAPTURED write above is still recorded for reconciliation.
+    if (user && (user.status === "REGISTERED" || user.status === "PAYMENT_PENDING")) {
       await tx.user.update({
         where: { id: userId },
         data: { status: "PENDING_VERIFICATION" },
@@ -122,6 +125,8 @@ export async function settlePayment(
 
     return { created: true };
   });
+  if (result.created) await invalidateActor(userId);
+  return result;
 }
 
 /**
@@ -152,8 +157,7 @@ export async function recordDemoPayment(input: {
       where: { id: userId },
       select: { status: true },
     });
-    if (user) {
-      assertTransition(user.status, "PENDING_VERIFICATION");
+    if (user && (user.status === "REGISTERED" || user.status === "PAYMENT_PENDING")) {
       await tx.user.update({
         where: { id: userId },
         data: { status: "PENDING_VERIFICATION" },
@@ -168,4 +172,5 @@ export async function recordDemoPayment(input: {
       metadata: { source: "DEMO" },
     });
   });
+  await invalidateActor(userId);
 }

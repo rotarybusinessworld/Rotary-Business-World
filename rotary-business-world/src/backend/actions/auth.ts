@@ -5,6 +5,7 @@ import { signIn } from "@/backend/auth";
 import { registerSchema, loginSchema } from "@/shared/validators";
 import { registerMember } from "@/backend/services/registration";
 import { isAppError } from "@/backend/errors";
+import { checkRateLimit } from "@/backend/rate-limit";
 
 export type FormState = {
   error?: string;
@@ -21,6 +22,17 @@ export async function registerAction(
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
   const data = parsed.data;
+
+  // 3 registration attempts per email per 5 minutes — prevents re-submitting the
+  // same address in a tight loop (e.g. double-tap on mobile).
+  const { allowed } = await checkRateLimit(
+    `register:${data.email.toLowerCase()}`,
+    3,
+    300,
+  );
+  if (!allowed) {
+    return { error: "Too many signup attempts. Please try again later." };
+  }
 
   try {
     await registerMember(data);

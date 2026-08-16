@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth, unstable_update } from "@/backend/auth";
-import { db } from "@/backend/db";
+import { getActor } from "@/backend/actor";
 
 /** Require a logged-in, non-suspended user. Suspended users go to /account/suspended. */
 export async function requireUser(callbackUrl?: string) {
@@ -18,42 +18,27 @@ export async function requireUser(callbackUrl?: string) {
 /**
  * Require a user who has completed payment.
  *
- * Fast path: JWT shows PENDING_VERIFICATION or VERIFIED → no DB read.
+ * Always reads live status from the Redis actor cache (300s TTL) so that
+ * suspension takes effect within the TTL window rather than waiting for JWT
+ * expiry (up to 30 days). Self-heals the JWT when DB is ahead of the token
+ * (e.g. Razorpay webhook delivered payment.captured before /verify was called).
  *
- * Pre-payment states (REGISTERED, PAYMENT_PENDING): re-read DB to handle the
- * webhook-first race — Razorpay can deliver payment.captured before the client
- * POSTs to /api/razorpay/verify (e.g. UPI, closed tab). If DB is ahead of the
- * JWT, self-heal with unstable_update() so this read never fires again.
- *
- * REJECTED: member has already paid and been declined — not redirected to payment.
- * Admins are exempt (they don't pay the membership fee).
+ * Admins are exempt — they don't pay the membership fee.
  */
 export async function requirePaid(callbackUrl?: string) {
   const user = await requireUser(callbackUrl);
   if (user.role === "MANAGEMENT" || user.role === "DISTRICT_ADMIN") return user;
 
-  // Fast path — JWT is already post-payment.
-  if (user.status === "PENDING_VERIFICATION" || user.status === "VERIFIED") {
-    return user;
-  }
+  const snapshot = await getActor(user.id);
+  const liveStatus = snapshot?.status ?? user.status;
 
-  // REJECTED: member has paid and been declined; dashboard shows rejection notice.
-  if (user.status === "REJECTED") redirect("/dashboard");
-
-  // Pre-payment JWT (REGISTERED or PAYMENT_PENDING). Check DB in case the webhook
-  // already settled the payment before the client called /verify.
-  const record = await db.user.findUnique({
-    where: { id: user.id },
-    select: { status: true },
-  });
-  const liveStatus = record?.status ?? user.status;
-
+  // Re-check suspension from cache — JWT may be stale.
+  if (liveStatus === "SUSPENDED") redirect("/account/suspended");
   if (liveStatus === "PENDING_VERIFICATION" || liveStatus === "VERIFIED") {
-    // DB is ahead of JWT — refresh the token so future requests hit the fast path.
-    await unstable_update({ user: { status: liveStatus } });
+    if (liveStatus !== user.status) await unstable_update({ user: { status: liveStatus } });
     return { ...user, status: liveStatus };
   }
-
+  if (liveStatus === "REJECTED") redirect("/dashboard");
   redirect("/onboarding/payment");
 }
 
@@ -69,11 +54,8 @@ export async function requireVerified(callbackUrl?: string) {
   if (user.status === "VERIFIED") return user;
 
   // JWT shows PENDING_VERIFICATION; admin may have approved or rejected since sign-in.
-  const record = await db.user.findUnique({
-    where: { id: user.id },
-    select: { status: true },
-  });
-  const liveStatus = record?.status ?? user.status;
+  const snapshot = await getActor(user.id);
+  const liveStatus = snapshot?.status ?? user.status;
 
   if (liveStatus === "VERIFIED") {
     await unstable_update({ user: { status: liveStatus } });
@@ -87,12 +69,9 @@ export async function requireVerified(callbackUrl?: string) {
 }
 
 /**
- * Require an admin (district or management). Re-reads role from DB on every call
- * to detect revocation — revokeDistrictAdmin() changes the DB but cannot call
- * unstable_update() for the target user's session (no session context in a
- * server-only service). This is the correct interim fix until Redis-backed
- * getActor() (Tier 1 #2) is in place. Admin routes are low-traffic; the DB
- * read cost is acceptable.
+ * Require an admin (district or management). Reads role from the Redis actor
+ * cache (300s TTL, invalidated by revokeDistrictAdmin). On a cache miss the
+ * DB is the fallback. Detects revocation within one TTL window.
  */
 export async function requireAdmin() {
   const user = await requireUser();
@@ -100,11 +79,8 @@ export async function requireAdmin() {
     redirect("/dashboard");
   }
 
-  const record = await db.user.findUnique({
-    where: { id: user.id },
-    select: { role: true },
-  });
-  const liveRole = record?.role ?? user.role;
+  const snapshot = await getActor(user.id);
+  const liveRole = snapshot?.role ?? user.role;
 
   if (liveRole !== "MANAGEMENT" && liveRole !== "DISTRICT_ADMIN") {
     // Role was revoked — refresh the JWT and redirect to member dashboard.
@@ -137,23 +113,34 @@ export type AdminScope = {
 };
 
 export async function getAdminScope(): Promise<AdminScope> {
-  const user = await requireAdmin();
-
-  if (user.role === "MANAGEMENT") {
-    return { user, managedDistrictId: null };
+  // Inline requireAdmin() logic so we make ONE getActor() call and reuse the
+  // snapshot for both the liveness role-check and the managedDistrictId lookup.
+  const user = await requireUser();
+  if (user.role !== "MANAGEMENT" && user.role !== "DISTRICT_ADMIN") {
+    redirect("/dashboard");
   }
 
-  const record = await db.user.findUnique({
-    where: { id: user.id },
-    select: { managedDistrictId: true },
-  });
+  const snapshot = await getActor(user.id);
+  const liveRole = snapshot?.role ?? user.role;
 
-  const managedDistrictId = record?.managedDistrictId ?? null;
+  if (liveRole !== "MANAGEMENT" && liveRole !== "DISTRICT_ADMIN") {
+    await unstable_update({ user: { role: liveRole } });
+    redirect("/dashboard");
+  }
+  if (liveRole !== user.role) {
+    await unstable_update({ user: { role: liveRole } });
+  }
+
+  const authedUser = { ...user, role: liveRole };
+
+  if (liveRole === "MANAGEMENT") return { user: authedUser, managedDistrictId: null };
+
+  const managedDistrictId = snapshot?.managedDistrictId ?? null;
   // Fail closed: a DISTRICT_ADMIN with no district (e.g. district deleted via
   // ON DELETE SET NULL) must NOT fall through to unscoped MANAGEMENT access.
   // Redirect to /admin/no-district (outside (main)/) to avoid the layout's
   // DISTRICT_ADMIN → /admin redirect creating an infinite loop.
   if (!managedDistrictId) redirect("/admin/no-district");
 
-  return { user, managedDistrictId };
+  return { user: authedUser, managedDistrictId };
 }
