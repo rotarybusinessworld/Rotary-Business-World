@@ -10,6 +10,5 @@ export default async function LoginPage({
   const sp = await searchParams;
   const next = typeof sp.next === "string" ? sp.next : "";
   const registered = sp.registered === "1";
-  const emailLoginEnabled = !!process.env.RESEND_API_KEY;
-  return <LoginForm next={next} registered={registered} emailLoginEnabled={emailLoginEnabled} />;
+  return <LoginForm next={next} registered={registered} />;
 }

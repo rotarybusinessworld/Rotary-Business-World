@@ -95,6 +95,10 @@ export async function loginAction(
       ? rawNext
       : null;
 
+  if (!process.env.RESEND_API_KEY) {
+    return { error: "Email sign-in is not available yet. Please sign in with Google." };
+  }
+
   try {
     await signIn("resend", {
       email: parsed.data.email.toLowerCase(),

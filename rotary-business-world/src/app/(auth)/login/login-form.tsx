@@ -27,11 +27,9 @@ function SubmitButton() {
 export function LoginForm({
   next,
   registered,
-  emailLoginEnabled,
 }: {
   next: string;
   registered?: boolean;
-  emailLoginEnabled?: boolean;
 }) {
   const [state, action] = useActionState<FormState, FormData>(loginAction, {});
 
@@ -50,7 +48,7 @@ export function LoginForm({
 
         {registered && (
           <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 dark:border-green-800 dark:bg-green-950/40 dark:text-green-200">
-            Account created! Sign in with Google below to continue.
+            Account created! Sign in with Google or your email below to continue.
           </div>
         )}
 
@@ -70,45 +68,37 @@ export function LoginForm({
           </button>
         </form>
 
-        {!emailLoginEnabled && (
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            First time here?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Create an account
-            </Link>{" "}
-            — then sign in with Google to continue.
-          </p>
-        )}
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">or sign in with email</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
 
-        {emailLoginEnabled && (
-          <>
-            <div className="my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">or sign in with email</span>
-              <div className="h-px flex-1 bg-border" />
+        <form action={action} className="space-y-4">
+          {next && <input type="hidden" name="next" value={next} />}
+
+          <FormError message={state.error} />
+
+          {state.ok && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+              Check your inbox — we sent a sign-in link to your email.
             </div>
+          )}
 
-            <form action={action} className="space-y-4">
-              {next && <input type="hidden" name="next" value={next} />}
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+            />
+            <FieldError messages={state.fieldErrors?.email} />
+          </div>
 
-              <FormError message={state.error} />
-
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                />
-                <FieldError messages={state.fieldErrors?.email} />
-              </div>
-
-              <SubmitButton />
-            </form>
-          </>
-        )}
+          <SubmitButton />
+        </form>
 
         <div className="mt-6 border-t border-border pt-5 text-center">
           <p className="text-sm text-muted-foreground">
