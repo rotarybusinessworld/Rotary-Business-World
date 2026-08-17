@@ -45,9 +45,14 @@ const baseSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   RAZORPAY_AMOUNT_PAISE: z.string().optional(),
-  // Email (not yet implemented).
+  // Email (Resend — magic-link auth + notifications).
+  RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
-  SMTP_URL: z.string().optional(),
+  // Redis — BullMQ worker queue + actor cache.
+  REDIS_URL: z.string().optional(),
+  // Sentry — error monitoring. NEXT_PUBLIC so it's available on the client too.
+  // DSN is a public endpoint (safe to expose in the browser), not a secret.
+  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   // Logging.
   LOG_LEVEL: z.enum(LOG_LEVELS).optional(),
 });
@@ -62,6 +67,30 @@ function parseEnv(): Env {
       .join("\n");
     throw new Error(`Invalid environment variables:\n${detail}`);
   }
+
+  // S3 and Redis are required in production.
+  // S3: Railway's filesystem is ephemeral — uploads vanish on redeploy and aren't
+  //     shared across replicas. Fail closed so a missing config is caught at boot.
+  // Redis: Required for the actor cache (JWT freshness) and the BullMQ image-
+  //     processing pipeline (presigned upload → EXIF strip → final S3 key).
+  if (parsed.data.NODE_ENV === "production") {
+    const missing = (
+      [
+        "AWS_REGION",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "S3_BUCKET",
+        "REDIS_URL",
+      ] as const
+    ).filter((k) => !parsed.data[k]);
+    if (missing.length > 0) {
+      throw new Error(
+        `Missing required env vars for production:\n` +
+          missing.map((k) => `  - ${k}`).join("\n"),
+      );
+    }
+  }
+
   return parsed.data;
 }
 
@@ -83,6 +112,9 @@ export function missingProductionEnv(): string[] {
 
   const recommended: Array<[keyof Env, string]> = [
     ["AUTH_URL", "AUTH_URL (deployed base URL)"],
+    ["RESEND_API_KEY", "Resend API key (magic-link auth + email)"],
+    ["EMAIL_FROM", "EMAIL_FROM (sender address for magic-link emails)"],
+    ["REDIS_URL", "Redis URL (actor cache + BullMQ jobs)"],
     ["RAZORPAY_KEY_ID", "Razorpay key ID"],
     ["RAZORPAY_KEY_SECRET", "Razorpay key secret"],
     ["RAZORPAY_WEBHOOK_SECRET", "Razorpay webhook secret"],

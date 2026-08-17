@@ -5,7 +5,6 @@
  * Run: node --env-file=.env --import tsx prisma/seed-businesses.ts
  */
 import { PrismaClient } from "@prisma/client";
-import { hash as bcryptHash } from "@node-rs/bcrypt";
 import { slugify } from "../src/shared/utils";
 
 const db = new PrismaClient();
@@ -363,17 +362,16 @@ async function findOrCreateIndustry(name: string) {
 }
 
 async function findOrCreateCategory(name: string, industryId: string) {
+  const slug = slugify(`${industryId}-${name}`);
   return db.category.upsert({
-    where: { name_industryId: { name, industryId } },
+    where: { slug },
     update: {},
-    create: { name, slug: slugify(`${industryId}-${name}`), industryId },
+    create: { name, slug, industryId },
   });
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  const passwordHash = await bcryptHash("Demo@1234", 12);
-
   // Create verified members
   const users: { id: string }[] = [];
   for (const m of MEMBERS) {
@@ -382,7 +380,6 @@ async function main() {
       update: { status: "VERIFIED" },
       create: {
         email: m.email,
-        passwordHash,
         status: "VERIFIED",
         profile: {
           create: {
@@ -439,7 +436,7 @@ async function main() {
   }
 
   console.log(`\nDone — ${users.length} members, ${created} businesses created, ${skipped} skipped.`);
-  console.log("All member passwords: Demo@1234");
+  console.log("Members sign in via magic-link email (no passwords).");
 }
 
 main()

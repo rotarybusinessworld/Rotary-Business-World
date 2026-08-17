@@ -23,8 +23,8 @@ export async function registerAction(
   }
   const data = parsed.data;
 
-  // 3 registration attempts per email per 5 minutes — prevents re-submitting the
-  // same address in a tight loop (e.g. double-tap on mobile).
+  // 3 registration attempts per email per 5 minutes — prevents re-submitting
+  // the same address in a tight loop (e.g. double-tap on mobile).
   const { allowed } = await checkRateLimit(
     `register:${data.email.toLowerCase()}`,
     3,
@@ -45,16 +45,19 @@ export async function registerAction(
     throw err;
   }
 
-  // Registration complete — redirect to the membership payment step.
+  // Registration complete — send the magic-link so the user can sign in and
+  // land on /onboarding/payment. signIn() redirects to /verify-request;
+  // rethrow anything that isn't an AuthError so Next.js handles the redirect.
   try {
-    await signIn("credentials", {
+    await signIn("resend", {
       email: data.email.toLowerCase(),
-      password: data.password,
       redirectTo: "/onboarding/payment",
     });
   } catch (err) {
     if (err instanceof AuthError) {
-      return { error: "Account created, but sign-in failed. Please log in." };
+      return {
+        error: "Account created but email could not be sent. Please sign in.",
+      };
     }
     throw err;
   }
@@ -70,6 +73,16 @@ export async function loginAction(
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
+  // 5 attempts per email per 60 s — prevents magic-link spam.
+  const { allowed: loginAllowed } = await checkRateLimit(
+    `login:${parsed.data.email.toLowerCase()}`,
+    5,
+    60,
+  );
+  if (!loginAllowed) {
+    return { error: "Too many sign-in attempts. Please wait a minute." };
+  }
+
   // Safe relative-URL redirect: only honour same-origin paths. Reject
   // protocol-relative (`//evil.com`) and backslash (`/\evil.com`) forms that
   // pass a naive startsWith("/") check but navigate off-origin.
@@ -83,14 +96,13 @@ export async function loginAction(
       : null;
 
   try {
-    await signIn("credentials", {
+    await signIn("resend", {
       email: parsed.data.email.toLowerCase(),
-      password: parsed.data.password,
       redirectTo: next ?? "/dashboard",
     });
   } catch (err) {
     if (err instanceof AuthError) {
-      return { error: "Invalid email or password" };
+      return { error: "Could not send sign-in link. Please try again." };
     }
     throw err;
   }

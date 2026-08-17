@@ -96,17 +96,13 @@ export async function getActor(userId: string): Promise<ActorSnapshot | null> {
 
   if (redis) {
     try {
-      // NX: only write if the key doesn't already exist. Prevents a slow reader
-      // from overwriting a fresher value written by another request, and prevents
-      // a stale DB read (from before an admin mutation) from being written back
-      // after invalidateActor() has already deleted the key.
-      await redis.set(
-        actorKey(userId),
-        JSON.stringify(snapshot),
-        "EX",
-        ACTOR_TTL_SECONDS,
-        "NX",
-      );
+      // Unconditional SET EX (no NX flag). With NX, a slow DB-read that races
+      // with invalidateActor() can re-populate the cache with stale data after
+      // the key was deleted: invalidateActor DELs the key, the slow reader's
+      // SET NX succeeds (key is gone), and the stale snapshot is cached for
+      // another full TTL. Without NX, any subsequent fresh request overwrites
+      // the stale value in milliseconds rather than 300 s.
+      await redis.set(actorKey(userId), JSON.stringify(snapshot), "EX", ACTOR_TTL_SECONDS);
     } catch {
       // Best effort — cache miss on next read is safe
     }

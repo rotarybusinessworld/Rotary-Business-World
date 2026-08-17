@@ -1,6 +1,5 @@
 import "server-only";
 import { db } from "@/backend/db";
-import { hashPassword } from "@/backend/password";
 import { verifyAgainstRoster } from "@/backend/verification";
 import { ConflictError, NotFoundError } from "@/backend/errors";
 
@@ -15,7 +14,6 @@ import { ConflictError, NotFoundError } from "@/backend/errors";
 export type RegisterMemberInput = {
   fullName: string;
   email: string;
-  password: string;
   rotaryId: string;
   clubName: string;
   /** FK to District.id — the picker submits this; we resolve the code for roster matching. */
@@ -64,12 +62,9 @@ export async function registerMember(
   // Duplicate-identity protection is enforced at admin approval time by
   // verification-queue.ts + the @@unique(matchedRosterId) DB constraint.
 
-  const passwordHash = await hashPassword(input.password);
-
   const user = await db.user.create({
     data: {
       email,
-      passwordHash,
       // PAYMENT_PENDING: registered, email confirmed, ready to pay.
       // (REGISTERED → PAYMENT_PENDING email-confirm step is Week 2 / magic-link.)
       status: "PAYMENT_PENDING",

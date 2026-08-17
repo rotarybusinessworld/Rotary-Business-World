@@ -44,34 +44,45 @@ export async function requirePaid(callbackUrl?: string) {
 
 /**
  * Require a VERIFIED user who has paid. PENDING_VERIFICATION users may have been
- * approved by an admin since their JWT was last written — re-read DB to detect this
- * and self-heal the JWT so future requests are free.
+ * approved by an admin since their JWT was last written — re-read the actor cache to
+ * detect this and self-heal the JWT so future requests are free.
+ *
+ * Inlined rather than calling requirePaid() to make ONE getActor() round-trip total.
+ * The old pattern called requirePaid() (which called getActor()) then called getActor()
+ * again — a redundant Redis hit for the largest cohort at launch (PENDING_VERIFICATION).
  */
 export async function requireVerified(callbackUrl?: string) {
-  const user = await requirePaid(callbackUrl);
+  const user = await requireUser(callbackUrl);
 
-  // Fast path — JWT already shows VERIFIED.
+  // Admins skip the payment + verification gate.
+  if (user.role === "MANAGEMENT" || user.role === "DISTRICT_ADMIN") return user;
+
+  // Fast path — JWT already shows VERIFIED, no actor cache read needed.
   if (user.status === "VERIFIED") return user;
 
-  // JWT shows PENDING_VERIFICATION; admin may have approved or rejected since sign-in.
+  // One getActor() call covers both the payment gate and the post-approval check.
   const snapshot = await getActor(user.id);
   const liveStatus = snapshot?.status ?? user.status;
 
-  if (liveStatus === "VERIFIED") {
-    await unstable_update({ user: { status: liveStatus } });
-    return { ...user, status: liveStatus };
+  if (liveStatus === "SUSPENDED") redirect("/account/suspended");
+
+  if (liveStatus === "PENDING_VERIFICATION" || liveStatus === "VERIFIED") {
+    // Self-heal the JWT when the DB is ahead of the token.
+    if (liveStatus !== user.status) await unstable_update({ user: { status: liveStatus } });
+    if (liveStatus === "VERIFIED") return { ...user, status: liveStatus };
+    redirect("/dashboard"); // PENDING_VERIFICATION — not yet approved
   }
 
-  // Rejected after payment — dashboard will show the rejection notice.
   if (liveStatus === "REJECTED") redirect("/dashboard");
 
-  redirect("/dashboard");
+  redirect("/onboarding/payment");
 }
 
 /**
- * Require an admin (district or management). Reads role from the Redis actor
- * cache (300s TTL, invalidated by revokeDistrictAdmin). On a cache miss the
- * DB is the fallback. Detects revocation within one TTL window.
+ * Require an admin (district or management). Reads role AND status from the Redis
+ * actor cache (300s TTL, invalidated by revokeDistrictAdmin / suspend actions).
+ * On a cache miss the DB is the fallback.
+ * Detects both role revocation and suspension within one TTL window.
  */
 export async function requireAdmin() {
   const user = await requireUser();
@@ -81,6 +92,15 @@ export async function requireAdmin() {
 
   const snapshot = await getActor(user.id);
   const liveRole = snapshot?.role ?? user.role;
+  const liveStatus = snapshot?.status ?? user.status;
+
+  // Check suspension before role — a suspended admin must not access admin routes
+  // even if their role is still intact. requireUser() only catches suspension when
+  // the JWT already says SUSPENDED (stale up to 30 days without this check).
+  if (liveStatus === "SUSPENDED") {
+    await unstable_update({ user: { status: "SUSPENDED" } });
+    redirect("/account/suspended");
+  }
 
   if (liveRole !== "MANAGEMENT" && liveRole !== "DISTRICT_ADMIN") {
     // Role was revoked — refresh the JWT and redirect to member dashboard.
@@ -98,12 +118,22 @@ export async function requireAdmin() {
 
 /**
  * Require a management account (platform-wide access only).
+ * Reads live status from actor cache to catch suspension within the TTL window
+ * rather than waiting for JWT expiry.
  */
 export async function requireManagement() {
   const user = await requireUser();
   if (user.role !== "MANAGEMENT") {
     redirect(user.role === "DISTRICT_ADMIN" ? "/admin" : "/dashboard");
   }
+
+  const snapshot = await getActor(user.id);
+  const liveStatus = snapshot?.status ?? user.status;
+  if (liveStatus === "SUSPENDED") {
+    await unstable_update({ user: { status: "SUSPENDED" } });
+    redirect("/account/suspended");
+  }
+
   return user;
 }
 

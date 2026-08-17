@@ -63,5 +63,5 @@ export type Suggestion = {
  */
 export interface SearchService {
   search(params: SearchParams): Promise<SearchResult>;
-  suggest(q: string): Promise<Suggestion[]>;
+  suggest(q: string, industry?: string): Promise<Suggestion[]>;
 }

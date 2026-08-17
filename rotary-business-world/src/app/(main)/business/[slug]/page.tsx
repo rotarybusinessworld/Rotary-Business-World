@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { BusinessCard } from "@/frontend/search/business-card";
 import { BusinessGallery } from "@/frontend/business/business-gallery";
@@ -31,7 +32,10 @@ import {
   Phone,
 } from "lucide-react";
 
-async function getBusiness(slug: string) {
+// cache() deduplicates calls with the same slug within a single request render tree.
+// generateMetadata and the page component both call getBusiness — without this they
+// would issue two identical Postgres queries with the same 4-table join per page load.
+const getBusiness = cache(async (slug: string) => {
   return db.business.findUnique({
     where: { slug },
     include: {
@@ -44,7 +48,7 @@ async function getBusiness(slug: string) {
       },
     },
   });
-}
+});
 
 export async function generateMetadata({
   params,

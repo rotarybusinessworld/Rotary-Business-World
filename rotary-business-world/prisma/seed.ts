@@ -45,14 +45,11 @@ async function main() {
       create: { name: industryName, slug: slugify(industryName) },
     });
     for (const categoryName of categories) {
+      const slug = slugify(`${industryName}-${categoryName}`);
       await db.category.upsert({
-        where: { name_industryId: { name: categoryName, industryId: industry.id } },
+        where: { slug },
         update: {},
-        create: {
-          name: categoryName,
-          slug: slugify(`${industryName}-${categoryName}`),
-          industryId: industry.id,
-        },
+        create: { name: categoryName, slug, industryId: industry.id },
       });
     }
   }

@@ -6,6 +6,7 @@ import { MapPin, Search, Tag, X } from "lucide-react";
 import { cn } from "@/shared/utils";
 import type { Suggestion } from "@/backend/search/types";
 import { useSearchSuggest } from "./use-search-suggest";
+import { IndustrySelector, type TaxonomyData } from "./industry-selector";
 
 /** Bold the matched substring in a suggestion label. */
 function Highlight({ label, query }: { label: string; query: string }) {
@@ -36,8 +37,12 @@ const TYPE_LABEL: Record<Suggestion["type"], string> = {
   city: "City",
 };
 
-/** Directory search box with debounced typeahead suggestions. */
-export function SearchBar() {
+interface SearchBarProps {
+  taxonomy: TaxonomyData;
+}
+
+/** Directory search box with IndiaMART-style category selector + debounced typeahead. */
+export function SearchBar({ taxonomy }: SearchBarProps) {
   const router = useRouter();
   const params = useSearchParams();
   const [value, setValue] = useState(params.get("q") ?? "");
@@ -45,6 +50,8 @@ export function SearchBar() {
 
   const boxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const activeIndustry = params.get("industry") ?? undefined;
 
   // Keep input in sync when navigating (e.g. facet clicks).
   useEffect(() => {
@@ -83,7 +90,7 @@ export function SearchBar() {
   }
 
   const { suggestions, open, setOpen, selectedIndex, handleKeyDown } =
-    useSearchSuggest({ value, onSelect: navigate });
+    useSearchSuggest({ value, onSelect: navigate, industry: activeIndustry });
 
   // Merge external open state: open=hook state, open2=local "was focused" state.
   const isOpen = (open || open2) && suggestions.length > 0;
@@ -120,10 +127,17 @@ export function SearchBar() {
           setOpen(false);
           setOpen2(false);
         }}
-        className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5 shadow-[var(--shadow-card)] transition-[box-shadow,border-color] duration-200 focus-within:border-primary/40 focus-within:shadow-[var(--shadow-pop)]"
+        className="flex items-center gap-0 rounded-full border border-border bg-card shadow-[var(--shadow-card)] transition-[box-shadow,border-color] duration-200 focus-within:border-primary/40 focus-within:shadow-[var(--shadow-pop)]"
       >
-        <div className="flex flex-1 items-center gap-2 pl-3">
-          <Search className="h-5 w-5 text-muted-foreground" />
+        {/* ── Left: industry/category selector ─────────────────────── */}
+        <IndustrySelector taxonomy={taxonomy} />
+
+        {/* Vertical divider */}
+        <div className="h-6 w-px flex-shrink-0 bg-border" />
+
+        {/* ── Middle: text input ────────────────────────────────────── */}
+        <div className="flex flex-1 items-center gap-2 px-3">
+          <Search className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden />
           <input
             ref={inputRef}
             value={value}
@@ -133,7 +147,11 @@ export function SearchBar() {
             }}
             onFocus={() => setOpen2(true)}
             onKeyDown={handleKeyDown}
-            placeholder="Search businesses, industries, cities…"
+            placeholder={
+              activeIndustry
+                ? `Search in ${activeIndustry}…`
+                : "Search businesses, industries, cities…"
+            }
             aria-label="Search the directory"
             aria-autocomplete="list"
             aria-expanded={isOpen}
@@ -154,12 +172,16 @@ export function SearchBar() {
             </button>
           )}
         </div>
-        <button
-          type="submit"
-          className="inline-flex h-10 shrink-0 items-center rounded-full bg-rotary-gold px-5 text-sm font-semibold text-secondary-foreground transition-all duration-200 ease-out hover:-translate-y-px hover:bg-rotary-gold-light"
-        >
-          Search
-        </button>
+
+        {/* ── Right: submit ─────────────────────────────────────────── */}
+        <div className="p-1.5 pl-0">
+          <button
+            type="submit"
+            className="inline-flex h-10 shrink-0 items-center rounded-full bg-rotary-gold px-5 text-sm font-semibold text-secondary-foreground transition-all duration-200 ease-out hover:-translate-y-px hover:bg-rotary-gold-light"
+          >
+            Search
+          </button>
+        </div>
       </form>
 
       {/* Suggestions dropdown — grouped by type */}
@@ -177,7 +199,6 @@ export function SearchBar() {
             listOffset += items.length;
             return (
               <li key={type}>
-                {/* Group header */}
                 <div className="flex items-center gap-1.5 px-4 pb-0.5 pt-2.5">
                   <Icon className="h-3 w-3 text-muted-foreground/50" aria-hidden />
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">

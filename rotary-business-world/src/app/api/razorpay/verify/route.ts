@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   }
   const payment = (await paymentRes.json()) as { amount: number; currency: string };
 
-  await settlePayment({
+  const settled = await settlePayment({
     userId: session.user.id,
     razorpayOrderId: razorpay_order_id,
     razorpayPaymentId: razorpay_payment_id,
@@ -67,9 +67,13 @@ export async function POST(req: Request) {
     actorId: session.user.id,
   });
 
-  // Rewrite the JWT immediately so the client's next request sees
-  // PENDING_VERIFICATION without a stale-token redirect loop.
-  await unstable_update({ user: { status: "PENDING_VERIFICATION" } });
+  // Only rewrite the JWT when the payment was genuinely just settled.
+  // On a duplicate verify call (settled.created === false) the user's DB status
+  // is already beyond PAYMENT_PENDING — overwriting the JWT with
+  // PENDING_VERIFICATION would regress a VERIFIED member's session.
+  if (settled.created) {
+    await unstable_update({ user: { status: "PENDING_VERIFICATION" } });
+  }
 
   return NextResponse.json({ ok: true });
 }

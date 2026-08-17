@@ -11,6 +11,8 @@ export interface UseSearchSuggestOptions {
   value: string;
   /** Called when the user selects a suggestion (click or Enter). */
   onSelect: (s: Suggestion) => void;
+  /** When set, suggests are scoped to this industry. */
+  industry?: string;
 }
 
 export interface UseSearchSuggestReturn {
@@ -31,6 +33,7 @@ export interface UseSearchSuggestReturn {
 export function useSearchSuggest({
   value,
   onSelect,
+  industry,
 }: UseSearchSuggestOptions): UseSearchSuggestReturn {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -55,9 +58,10 @@ export function useSearchSuggest({
     }
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `/api/search/suggest?q=${encodeURIComponent(q)}`,
-        );
+        const url = new URL("/api/search/suggest", window.location.origin);
+        url.searchParams.set("q", q);
+        if (industry) url.searchParams.set("industry", industry);
+        const res = await fetch(url.toString());
         if (res.ok) {
           const data = (await res.json()) as Suggestion[];
           setSuggestions(data);
@@ -68,7 +72,7 @@ export function useSearchSuggest({
       }
     }, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [value]);
+  }, [value, industry]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {

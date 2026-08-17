@@ -17,9 +17,9 @@ function SubmitButton() {
       size="lg"
       className="w-full"
       loading={pending}
-      loadingText="Signing in…"
+      loadingText="Sending link…"
     >
-      Log in
+      Send sign-in link
     </Button>
   );
 }
@@ -37,7 +37,7 @@ export function LoginForm({ next }: { next: string }) {
           Welcome back
         </h1>
         <p className="mt-1 mb-6 text-sm text-muted-foreground">
-          Log in to manage your business listings.
+          Enter your email and we&apos;ll send you a sign-in link.
         </p>
 
         <form action={action} className="space-y-4">
@@ -56,18 +56,6 @@ export function LoginForm({ next }: { next: string }) {
               required
             />
             <FieldError messages={state.fieldErrors?.email} />
-          </div>
-
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-            <FieldError messages={state.fieldErrors?.password} />
           </div>
 
           <SubmitButton />

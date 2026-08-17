@@ -5,12 +5,10 @@
  *   npm run reset-accounts
  */
 import { PrismaClient } from "@prisma/client";
-import { hash as bcryptHash } from "@node-rs/bcrypt";
 
 const db = new PrismaClient();
 
 const EMAIL = "sanjayvanan03@gmail.com";
-const PASSWORD = "qwertyuiop";
 const FULL_NAME = "Sanjay Vanan";
 
 async function main() {
@@ -28,13 +26,10 @@ async function main() {
   const { count } = await db.user.deleteMany({});
   console.log(`  Deleted ${count} user(s).`);
 
-  // Seed the management account
-  const passwordHash = await bcryptHash(PASSWORD, 12);
-
+  // Seed the management account (sign-in via magic-link email)
   const user = await db.user.create({
     data: {
       email: EMAIL,
-      passwordHash,
       role: "MANAGEMENT",
       status: "VERIFIED",
       profile: { create: { fullName: FULL_NAME } },
@@ -43,9 +38,8 @@ async function main() {
   });
 
   console.log("\nManagement account created:");
-  console.log(`  Email:    ${user.email}`);
-  console.log(`  Password: ${PASSWORD}`);
-  console.log(`  Role:     ${user.role}`);
+  console.log(`  Email: ${user.email} (sign in via magic-link)`);
+  console.log(`  Role:  ${user.role}`);
   console.log(`  Status:   ${user.status}`);
   console.log(`  ID:       ${user.id}`);
 }

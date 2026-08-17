@@ -48,11 +48,63 @@ export class PostgresSearchService implements SearchService {
     return result;
   }
 
-  async suggest(qRaw: string): Promise<Suggestion[]> {
+  async suggest(qRaw: string, industry?: string): Promise<Suggestion[]> {
     const q = qRaw.trim();
     if (q.length < 2) return [];
 
     const likeQ = q + "%";
+
+    if (industry) {
+      // Industry-scoped suggest: businesses + categories within the selected
+      // industry, and cities from businesses in that industry. The industry
+      // bucket is omitted — the selection is already made.
+      const rows = await db.$queryRaw<{ label: string; type: string; sim: number }[]>`
+        SELECT label, type, sim FROM (
+          (
+            SELECT b."name"                          AS label,
+                   'business'::text                  AS type,
+                   MAX(similarity(b."name", ${q}))   AS sim
+            FROM   "Business" b
+            WHERE  b."status" = 'APPROVED'
+              AND  b."industryName" = ${industry}
+              AND  (b."name" ILIKE ${likeQ} OR b."name" % ${q})
+            GROUP  BY b."name"
+            ORDER  BY 3 DESC
+            LIMIT  6
+          )
+          UNION ALL
+          (
+            SELECT c."name"                        AS label,
+                   'category'::text               AS type,
+                   similarity(c."name", ${q})     AS sim
+            FROM   "Category" c
+            JOIN   "Industry" i ON i."id" = c."industryId"
+            WHERE  i."name" = ${industry}
+              AND  (c."name" ILIKE ${likeQ} OR c."name" % ${q})
+            ORDER  BY 3 DESC
+            LIMIT  5
+          )
+          UNION ALL
+          (
+            SELECT b."city"                          AS label,
+                   'city'::text                      AS type,
+                   MAX(similarity(b."city", ${q}))   AS sim
+            FROM   "Business" b
+            WHERE  b."status" = 'APPROVED'
+              AND  b."industryName" = ${industry}
+              AND  b."city"  IS NOT NULL
+              AND  b."city"  <> ''
+              AND  (b."city" ILIKE ${likeQ} OR b."city" % ${q})
+            GROUP  BY b."city"
+            ORDER  BY 3 DESC
+            LIMIT  3
+          )
+        ) combined
+        ORDER BY sim DESC
+        LIMIT 12
+      `;
+      return rows.map((r) => ({ label: r.label, type: r.type as Suggestion["type"] }));
+    }
 
     // UNION ALL across four sources, each limited to its own bucket.
     // Parenthesised subqueries let Postgres apply per-bucket LIMITs before

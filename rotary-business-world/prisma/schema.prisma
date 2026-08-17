@@ -38,6 +38,13 @@ enum BusinessStatus {
   SUSPENDED // taken down by an admin after going live
 }
 
+enum ServiceReach {
+  DISTRICT
+  STATE
+  NATIONAL
+  INTERNATIONAL
+}
+
 enum VerificationStatus {
   PENDING
   APPROVED
@@ -49,14 +56,13 @@ enum VerificationStatus {
 // ---------------------------------------------------------------------------
 
 model User {
-  id             String     @id @default(cuid())
-  email          String     @unique
-  passwordHash   String
-  role           Role       @default(MEMBER)
-  status         UserStatus @default(PAYMENT_PENDING)
+  id              String     @id @default(cuid())
+  email           String     @unique
+  role            Role       @default(MEMBER)
+  status          UserStatus @default(PAYMENT_PENDING)
   emailVerifiedAt DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   // District this user is responsible for as an admin (null for MEMBER / MANAGEMENT).
   managedDistrictId String?
@@ -68,6 +74,7 @@ model User {
   verificationRequests VerificationRequest[] @relation("RequestUser")
   reviewedRequests     VerificationRequest[] @relation("ReviewerUser")
   emailTokens          EmailVerificationToken[]
+  accounts             Account[]
 
   // Direct messaging (see Conversation / Message / Block below).
   conversationsAsP1 Conversation[] @relation("ConversationsAsP1")
@@ -144,10 +151,11 @@ model District {
   name    String?
   country String?
 
-  clubs        Club[]
-  rotaryInfos  RotaryInfo[]
+  clubs         Club[]
+  rotaryInfos   RotaryInfo[]
   rosterMembers RosterMember[]
-  admins       User[]          @relation("DistrictAdmins")
+  admins        User[]     @relation("DistrictAdmins")
+  businesses    Business[]
 
   @@index([country])
 }
@@ -208,9 +216,23 @@ model Category {
   slug       String     @unique
   industryId String
   industry   Industry   @relation(fields: [industryId], references: [id])
-  businesses Business[]
 
-  @@unique([name, industryId])
+  // Depth-3 taxonomy tree. parentId null = top-level category (depth 0).
+  // path is a slash-separated ancestry string, e.g. "printing/offset-printing".
+  // Subtree queries: WHERE path LIKE :prefix || '%' (index-friendly, no CTE).
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  path     String     @default("") // e.g. "printing" or "printing/offset-printing"
+  depth    Int        @default(0)  // 0 = top-level, 1 = sub, 2 = leaf
+  synonyms String[]   @default([]) // search aliases, e.g. ["press", "reprographics"]
+
+  businesses Business[]
+  offerings  BusinessOffering[]
+
+  @@index([industryId])
+  @@index([parentId])
+  @@index([path])
 }
 
 model Business {
@@ -248,8 +270,18 @@ model Business {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  images  BusinessImage[]
-  reviews Review[]
+  // Geography — denormalized from owner.rotaryInfo for query efficiency.
+  // districtId is set at creation from the owner's home district so district-admin
+  // scoped queries don't require a two-hop join through RotaryInfo.
+  districtId   String?
+  district     District?    @relation(fields: [districtId], references: [id])
+  stateCode    String?      // ISO 3166-2 state code, e.g. "IN-TN"
+  serviceReach ServiceReach @default(NATIONAL)
+  receiveLeads Boolean      @default(true) // opt-out of Needs/Leads notifications
+
+  images    BusinessImage[]
+  reviews   Review[]
+  offerings BusinessOffering[]
 
   // searchVector and searchText are both GENERATED ALWAYS ... STORED columns
   // managed by prisma/sql/search.sql (npm run db:search). Declaring them here
@@ -260,8 +292,10 @@ model Business {
 
   @@index([industryId])
   @@index([categoryId])
+  @@index([districtId])
   @@index([country, city])
   @@index([status])
+  @@index([serviceReach])
   @@index([searchVector], type: Gin)
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
 }
@@ -276,6 +310,55 @@ model BusinessImage {
   @@index([businessId])
 }
 
+/// Seller catalog entries. Each row declares a specific offering from a business
+/// (leaf category + keywords). Needs/Leads matching runs against offerings, not the
+/// business's single company-wide category. Hard-capped at MAX_OFFERINGS per business
+/// (enforced in src/backend/config/guardrails.ts) to prevent gaming.
+model BusinessOffering {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  title      String   // e.g. "Offset & Digital Printing"
+  keywords   String[] @default([])
+  createdAt  DateTime @default(now())
+
+  @@index([businessId])
+  @@index([categoryId])
+}
+
+// Auth.js v5 Prisma adapter models — required for magic-link email provider.
+// Account holds OAuth/email provider credentials; VerificationToken holds the
+// one-time magic-link token before the user clicks it.
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
 /// Tracks every file uploaded to object storage. Not FK-linked to other models —
 /// identity is the key itself. Enables reconciliation and future image derivatives.
 model MediaObject {
@@ -286,6 +369,10 @@ model MediaObject {
   width     Int?
   height    Int?
   blurhash  String?
+  // "PROCESSING" while the worker strips EXIF and moves to final location;
+  // "READY" when publicly accessible; "FAILED" if the worker errored.
+  // Old uploads via /api/upload default to "READY" (synchronous processing).
+  status    String   @default("READY")
   createdAt DateTime @default(now())
 
   @@index([createdAt])

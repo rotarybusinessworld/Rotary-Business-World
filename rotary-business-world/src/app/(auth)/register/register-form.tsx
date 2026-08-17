@@ -77,7 +77,8 @@ export function RegisterForm({
           Create your account
         </h1>
         <p className="mt-1 mb-6 text-sm text-muted-foreground">
-          We verify every member against the official Rotary roster.
+          We verify every member against the official Rotary roster. After
+          registration we&apos;ll email you a sign-in link.
         </p>
 
         <form action={action} className="space-y-5">
@@ -127,30 +128,17 @@ export function RegisterForm({
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                />
-                <FieldError messages={state.fieldErrors?.password} />
-              </div>
-              <div>
-                <Label htmlFor="country">Country</Label>
-                <Select id="country" name="country" defaultValue="">
-                  <option value="">Select a country…</option>
-                  {COUNTRIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </Select>
-                <FieldError messages={state.fieldErrors?.country} />
-              </div>
+            <div>
+              <Label htmlFor="country">Country</Label>
+              <Select id="country" name="country" defaultValue="">
+                <option value="">Select a country…</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
+              <FieldError messages={state.fieldErrors?.country} />
             </div>
           </div>
 

@@ -33,6 +33,32 @@ export async function approveVerification(requestId: string, _formData?: FormDat
   revalidatePath("/admin/verifications");
 }
 
+/**
+ * Approve all supplied verification requests in sequence.
+ * Each approval runs in its own transaction so individual failures don't roll
+ * back the others — partial success is better than all-or-nothing for bulk ops.
+ * Returns counts so the client can show a summary toast.
+ */
+export async function bulkApproveVerificationsAction(
+  ids: string[],
+): Promise<{ approved: number; failed: string[] }> {
+  const { user, managedDistrictId } = await getAdminScope();
+  const failed: string[] = [];
+  let approved = 0;
+
+  for (const id of ids) {
+    try {
+      await queue.approveVerification(user, id, managedDistrictId);
+      approved++;
+    } catch {
+      failed.push(id);
+    }
+  }
+
+  revalidatePath("/admin/verifications");
+  return { approved, failed };
+}
+
 /** Reject a pending member. No-ops if the request is gone or already reviewed. */
 export async function rejectVerification(requestId: string, formData?: FormData) {
   const { user, managedDistrictId } = await getAdminScope();

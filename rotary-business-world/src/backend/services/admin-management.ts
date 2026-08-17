@@ -1,7 +1,6 @@
 import "server-only";
 import { db } from "@/backend/db";
 import { assertManagement, invalidateActor, type Actor } from "@/backend/actor";
-import { hashPassword } from "@/backend/password";
 import { auditCreate } from "@/backend/audit";
 import { ConflictError, NotFoundError } from "@/backend/errors";
 
@@ -70,7 +69,7 @@ export async function listDistrictsWithAdmins(
 /** Create a brand-new district-admin account, verified and scoped to a district. */
 export async function createDistrictAdmin(
   actor: Actor,
-  input: { fullName: string; email: string; password: string; districtId: string },
+  input: { fullName: string; email: string; districtId: string },
 ): Promise<{ id: string }> {
   const admin = assertManagement(actor);
   const email = input.email.toLowerCase();
@@ -88,14 +87,11 @@ export async function createDistrictAdmin(
     });
   }
 
-  const passwordHash = await hashPassword(input.password);
-
   // Interactive transaction so the audit row can reference the new user's id.
   const created = await db.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
         email,
-        passwordHash,
         role: "DISTRICT_ADMIN",
         status: "VERIFIED",
         managedDistrictId: district.id,

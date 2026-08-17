@@ -125,7 +125,9 @@ export async function settlePayment(
 
     return { created: true };
   });
-  if (result.created) await invalidateActor(userId);
+  // Always invalidate — the transaction may have changed user status or
+  // the payment row. A spurious DEL on an idempotent duplicate is harmless.
+  await invalidateActor(userId);
   return result;
 }
 

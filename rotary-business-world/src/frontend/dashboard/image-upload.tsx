@@ -9,16 +9,62 @@ import { toImageSrc } from "@/shared/image";
 const MAX_GALLERY = 12;
 
 async function uploadFile(file: File, folder: string): Promise<string> {
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("folder", folder);
-  const res = await fetch("/api/upload", { method: "POST", body: fd });
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ?? "Upload failed");
+  // 1. Ask the server for a presigned S3 PUT URL (or fall back to server-side upload).
+  const presignRes = await fetch("/api/upload/presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder, contentType: file.type, size: file.size }),
+  });
+  if (!presignRes.ok) {
+    const data = (await presignRes.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? "Could not start upload");
   }
-  const data = (await res.json()) as { key: string };
-  return data.key;
+
+  type PresignResponse =
+    | { mode: "server" }
+    | { mode: "s3"; quarantineKey: string; finalKey: string; url: string };
+
+  const presign = (await presignRes.json()) as PresignResponse;
+
+  // Local dev (no S3) — use the old server-side route.
+  if (presign.mode === "server") {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("folder", folder);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(data.error ?? "Upload failed");
+    }
+    return ((await res.json()) as { key: string }).key;
+  }
+
+  // 2. Upload the raw file directly to S3 (bypasses the app server).
+  const putRes = await fetch(presign.url, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  if (!putRes.ok) {
+    throw new Error("Upload to S3 failed — please try again");
+  }
+
+  // 3. Tell the server to verify, strip EXIF, and register the MediaObject.
+  //    The server enqueues a worker job; the key is returned immediately.
+  const confirmRes = await fetch("/api/upload/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      quarantineKey: presign.quarantineKey,
+      finalKey: presign.finalKey,
+    }),
+  });
+  if (!confirmRes.ok) {
+    const data = (await confirmRes.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? "Could not finalize upload");
+  }
+
+  return ((await confirmRes.json()) as { key: string }).key;
 }
 
 /**

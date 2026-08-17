@@ -1,3 +1,4 @@
+import React from "react";
 import { Inbox } from "lucide-react";
 import { cn } from "@/shared/utils";
 
@@ -54,19 +55,15 @@ export function TBody({ children }: { children: React.ReactNode }) {
   return <tbody className="divide-y divide-border">{children}</tbody>;
 }
 
-export function Row({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <tr className={cn("transition-colors hover:bg-muted/30", className)}>
-      {children}
-    </tr>
-  );
-}
+export const Row = React.forwardRef<
+  HTMLTableRowElement,
+  { children: React.ReactNode; className?: string } & React.HTMLAttributes<HTMLTableRowElement>
+>(({ children, className, ...rest }, ref) => (
+  <tr ref={ref} className={cn("transition-colors hover:bg-muted/30", className)} {...rest}>
+    {children}
+  </tr>
+));
+Row.displayName = "Row";
 
 export function Td({
   children,

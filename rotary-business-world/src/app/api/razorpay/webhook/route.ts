@@ -56,25 +56,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
-  // Idempotency: insert a WebhookEvent row before any business logic.
-  // ON CONFLICT DO NOTHING (skipDuplicates) — if count === 0, this delivery was
-  // already processed; return 200 immediately so Razorpay stops retrying.
+  // Idempotency: gate on status=PROCESSED, not on existence.
+  //
+  // The prior pattern (createMany+skipDuplicates, exit if count===0) has a
+  // crash window: if settlePayment() fails after the row is inserted as
+  // RECEIVED, the row stays RECEIVED, Razorpay retries, sees count=0, and
+  // returns 200 without ever calling settlePayment(). Payment is permanently
+  // lost after Razorpay exhausts its retry budget.
+  //
+  // This pattern exits only when status=PROCESSED. A RECEIVED row on retry
+  // means a prior attempt crashed mid-flight — re-run settlePayment(), which
+  // is idempotent (returns {created:false} if already CAPTURED).
   const eventId = `payment.captured:${entity.id}`;
-  const webhookInsert = await db.webhookEvent.createMany({
-    data: [
-      {
+  const existing = await db.webhookEvent.findUnique({
+    where: { eventId },
+    select: { status: true },
+  });
+
+  if (existing?.status === "PROCESSED") {
+    return NextResponse.json({ received: true });
+  }
+
+  if (!existing) {
+    await db.webhookEvent.create({
+      data: {
         provider: "razorpay",
         eventId,
         eventType: event.event,
         payload: event as object,
         status: "RECEIVED",
       },
-    ],
-    skipDuplicates: true,
-  });
-
-  if (webhookInsert.count === 0) {
-    return NextResponse.json({ received: true });
+    });
   }
 
   await settlePayment({

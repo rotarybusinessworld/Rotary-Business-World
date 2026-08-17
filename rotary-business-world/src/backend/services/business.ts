@@ -105,14 +105,18 @@ export async function createBusiness(
 ): Promise<Business> {
   assertVerified(actor);
 
-  const taxonomy = await resolveTaxonomy(input.industryId, input.categoryId);
-  const slug = await uniqueSlug(input.name);
+  const [taxonomy, rotaryInfo, slug] = await Promise.all([
+    resolveTaxonomy(input.industryId, input.categoryId),
+    db.rotaryInfo.findUnique({ where: { userId: actor.id }, select: { districtId: true } }),
+    uniqueSlug(input.name),
+  ]);
 
   return db.business.create({
     data: {
       ownerId: actor.id,
       slug,
       status: "PENDING", // explicit — never rely on schema default for new listings
+      districtId: rotaryInfo?.districtId ?? null,
       ...scalarFields(input),
       ...taxonomy,
       images: { create: galleryRows(input.gallery) },

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // Allow images served from the S3 bucket's public host. Set
 // NEXT_PUBLIC_S3_PUBLIC_HOSTNAME to your bucket URL, CloudFront, or custom domain.
@@ -24,4 +25,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Silences the Sentry CLI output during build (set to true for debugging).
+  silent: true,
+  // Source-map upload requires SENTRY_AUTH_TOKEN and SENTRY_ORG/PROJECT env
+  // vars to be set in Railway's build environment. Without them, source maps
+  // are not uploaded (errors still captured, just without un-minified stacks).
+  // See: https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  webpack: {
+    treeshake: {
+      // Strip Sentry debug logging from client bundles.
+      removeDebugLogging: true,
+    },
+  },
+});

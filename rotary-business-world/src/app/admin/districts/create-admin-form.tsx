@@ -54,7 +54,7 @@ export function CreateAdminForm({ districts }: { districts: DistrictOption[] }) 
       <FormError message={state.error} />
       {state.ok && (
         <div className="rounded-[var(--radius)] border border-success/30 bg-[color-mix(in_srgb,var(--color-success)_8%,white)] px-3 py-2 text-sm text-success">
-          District admin created. Share the login with them.
+          District admin created. They can sign in with their email at /login.
         </div>
       )}
 
@@ -77,33 +77,19 @@ export function CreateAdminForm({ districts }: { districts: DistrictOption[] }) 
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="password">Initial password</Label>
-          <Input
-            id="password"
-            name="password"
-            type="text"
-            required
-            autoComplete="off"
-            placeholder="At least 8 characters"
-          />
-          <FieldError messages={state.fieldErrors?.password} />
-        </div>
-        <div>
-          <Label htmlFor="districtId">District</Label>
-          <Select id="districtId" name="districtId" required defaultValue="">
-            <option value="" disabled>
-              Select a district…
+      <div>
+        <Label htmlFor="districtId">District</Label>
+        <Select id="districtId" name="districtId" required defaultValue="">
+          <option value="" disabled>
+            Select a district…
+          </option>
+          {districts.map((d) => (
+            <option key={d.id} value={d.id}>
+              {districtLabel(d)}
             </option>
-            {districts.map((d) => (
-              <option key={d.id} value={d.id}>
-                {districtLabel(d)}
-              </option>
-            ))}
-          </Select>
-          <FieldError messages={state.fieldErrors?.districtId} />
-        </div>
+          ))}
+        </Select>
+        <FieldError messages={state.fieldErrors?.districtId} />
       </div>
 
       <SubmitButton />

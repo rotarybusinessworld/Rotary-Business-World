@@ -3,7 +3,6 @@ import { z } from "zod";
 export const registerSchema = z.object({
   fullName: z.string().min(2, "Please enter your full name").max(120),
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(8, "Use at least 8 characters").max(200),
   // Rotary details used for roster-match verification
   rotaryId: z.string().min(3, "Enter your Rotary / membership ID").max(40),
   clubName: z.string().min(2, "Enter your club name").max(160),
@@ -20,7 +19,6 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const loginSchema = z.object({
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(1, "Enter your password"),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
@@ -57,7 +55,6 @@ export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export const createDistrictAdminSchema = z.object({
   fullName: z.string().min(2, "Enter the admin's full name").max(120),
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(8, "Use at least 8 characters").max(200),
   districtId: z.string().min(1, "Select a district"),
 });
 export type CreateDistrictAdminInput = z.infer<typeof createDistrictAdminSchema>;

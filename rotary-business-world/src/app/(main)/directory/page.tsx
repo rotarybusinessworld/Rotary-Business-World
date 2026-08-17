@@ -5,7 +5,9 @@ import { FacetSidebar } from "@/frontend/search/facet-sidebar";
 import { FiltersPanel } from "@/frontend/search/filters-panel";
 import { DirectoryCard } from "@/frontend/search/directory-card";
 import { DirectoryRightRail } from "@/frontend/search/directory-right-rail";
+import { IndustryChips } from "@/frontend/search/industry-chips";
 import { getSearchService } from "@/backend/search";
+import { loadTaxonomy } from "@/backend/taxonomy";
 import { requirePaid } from "@/backend/auth-helpers";
 import { buttonVariants } from "@/frontend/ui/button";
 import { activeFilterCount } from "@/frontend/search/facet-utils";
@@ -39,15 +41,10 @@ export default async function DirectoryPage({
   // "Search instead for <original>" link sets force=1 to bypass did-you-mean.
   const forceOriginal = first(sp.force) === "1";
 
-  const result = await getSearchService().search({
-    q,
-    industry,
-    category,
-    country,
-    city,
-    page,
-    forceOriginal,
-  });
+  const [result, taxonomy] = await Promise.all([
+    getSearchService().search({ q, industry, category, country, city, page, forceOriginal }),
+    loadTaxonomy(),
+  ]);
 
   const current = { q, industry, category, country, city };
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
@@ -58,8 +55,11 @@ export default async function DirectoryPage({
       <main className="mx-auto w-full max-w-6xl px-4 py-6">
         {/* ── Sticky search bar ───────────────────────────────────────── */}
         <div className="sticky top-[68px] z-30 -mx-4 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-          <SearchBar />
+          <SearchBar taxonomy={taxonomy} />
         </div>
+
+        {/* ── Industry quick-browse chips ──────────────────────────── */}
+        <IndustryChips industries={taxonomy.industries} />
 
         {/* ── Three-column grid ────────────────────────────────────────
             Mobile: 1 column (FiltersPanel first → center → right hidden)
