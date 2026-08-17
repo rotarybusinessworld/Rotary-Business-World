@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import ResendProvider from "next-auth/providers/resend";
+import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Role, UserStatus } from "@prisma/client";
 import { Resend } from "resend";
@@ -11,6 +12,10 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   pages: { signIn: "/login", verifyRequest: "/verify-request" },
   trustHost: true,
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     ResendProvider({
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.EMAIL_FROM ?? "noreply@rotarybusinessworld.com",
@@ -40,11 +45,16 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
     // Primary guard is sendVerificationRequest (no email sent); this catches
     // stale VerificationToken rows that somehow survive without a user.
     async signIn({ user, account }) {
-      if (account?.provider === "resend") {
+      if (account?.provider === "resend" || account?.provider === "google") {
         const exists = await db.user.findUnique({
           where: { email: user.email! },
           select: { id: true },
         });
+        if (!exists && account.provider === "google") {
+          // Redirect to register with the Google email pre-filled so the user
+          // understands they need to create an account first.
+          return `/register?email=${encodeURIComponent(user.email!)}&hint=google`;
+        }
         return !!exists;
       }
       return true;

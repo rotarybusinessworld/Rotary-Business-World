@@ -58,9 +58,11 @@ function SubmitButton() {
 export function RegisterForm({
   districts,
   clubs,
+  googleEmail,
 }: {
   districts: District[];
   clubs: Club[];
+  googleEmail?: string;
 }) {
   const [state, action] = useActionState<FormState, FormData>(registerAction, {});
   const [selectedDistrictId, setSelectedDistrictId] = useState("");
@@ -80,6 +82,13 @@ export function RegisterForm({
           We verify every member against the official Rotary roster. After
           registration we&apos;ll email you a sign-in link.
         </p>
+
+        {googleEmail && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            No account found for <strong>{googleEmail}</strong>. Register below
+            first — once approved you can sign in with Google.
+          </div>
+        )}
 
         <form action={action} className="space-y-5">
           <FormError message={state.error} />
@@ -109,6 +118,7 @@ export function RegisterForm({
                   name="email"
                   type="email"
                   autoComplete="email"
+                  defaultValue={googleEmail ?? ""}
                   required
                 />
                 <FieldError messages={state.fieldErrors?.email} />

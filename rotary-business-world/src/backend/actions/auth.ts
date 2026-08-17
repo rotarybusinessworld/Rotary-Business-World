@@ -64,6 +64,18 @@ export async function registerAction(
   return { ok: true };
 }
 
+export async function googleSignInAction(formData: FormData): Promise<void> {
+  const rawNext = formData.get("next");
+  const next =
+    typeof rawNext === "string" &&
+    rawNext.startsWith("/") &&
+    !rawNext.startsWith("//") &&
+    !rawNext.startsWith("/\\")
+      ? rawNext
+      : "/dashboard";
+  await signIn("google", { redirectTo: next });
+}
+
 export async function loginAction(
   _prev: FormState,
   formData: FormData,

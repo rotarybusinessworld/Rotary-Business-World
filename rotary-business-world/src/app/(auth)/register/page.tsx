@@ -10,7 +10,14 @@ export const metadata = { title: "Join My Rotary Business World" };
 export const dynamic = "force-dynamic";
 
 /** Server component — fetches districts + clubs and hands them to the client form. */
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const googleEmail = sp.hint === "google" && typeof sp.email === "string" ? sp.email : undefined;
+
   const [districts, clubs] = await Promise.all([
     db.district.findMany({
       select: { id: true, code: true, name: true, country: true },
@@ -22,5 +29,5 @@ export default async function RegisterPage() {
     }),
   ]);
 
-  return <RegisterForm districts={districts} clubs={clubs} />;
+  return <RegisterForm districts={districts} clubs={clubs} googleEmail={googleEmail} />;
 }
