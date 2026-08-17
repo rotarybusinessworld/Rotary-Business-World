@@ -39,6 +39,7 @@ export async function requirePaid(callbackUrl?: string) {
     return { ...user, status: liveStatus };
   }
   if (liveStatus === "REJECTED") redirect("/dashboard");
+  if (liveStatus === "REGISTERED") redirect("/onboarding/rotary-profile");
   redirect("/onboarding/payment");
 }
 
@@ -74,7 +75,7 @@ export async function requireVerified(callbackUrl?: string) {
   }
 
   if (liveStatus === "REJECTED") redirect("/dashboard");
-
+  if (liveStatus === "REGISTERED") redirect("/onboarding/rotary-profile");
   redirect("/onboarding/payment");
 }
 

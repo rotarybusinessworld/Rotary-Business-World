@@ -59,7 +59,7 @@ model User {
   id              String     @id @default(cuid())
   email           String     @unique
   role            Role       @default(MEMBER)
-  status          UserStatus @default(PAYMENT_PENDING)
+  status          UserStatus @default(REGISTERED)
   emailVerifiedAt DateTime?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt

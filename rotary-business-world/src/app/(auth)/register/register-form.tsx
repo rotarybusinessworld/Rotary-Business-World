@@ -79,8 +79,8 @@ export function RegisterForm({
           Create your account
         </h1>
         <p className="mt-1 mb-6 text-sm text-muted-foreground">
-          We verify every member against the official Rotary roster. Once
-          approved, sign in with Google.
+          We verify every member against the official Rotary roster. Your
+          district admin will review and approve your account.
         </p>
 
         {googleEmail && (
@@ -121,9 +121,6 @@ export function RegisterForm({
                   defaultValue={googleEmail ?? ""}
                   required
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Use a Gmail or Google Workspace address so you can sign in with Google.
-                </p>
                 <FieldError messages={state.fieldErrors?.email} />
               </div>
               <div>

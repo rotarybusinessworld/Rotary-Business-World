@@ -45,7 +45,7 @@ export function LoginForm({
           Welcome back
         </h1>
         <p className="mt-1 mb-6 text-sm text-muted-foreground">
-          Enter your email and we&apos;ll send you a sign-in link.
+          Sign in to access the Rotary Business World member network.
         </p>
 
         {registered && (
@@ -70,16 +70,14 @@ export function LoginForm({
           </button>
         </form>
 
-        {/* New-user notice — shown when Resend is off (no email fallback visible) */}
-        {!emailLoginEnabled && !registered && (
-          <div className="mt-4 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">New here?</span> Google sign-in is for
-            existing members only. You need to{" "}
+        {!emailLoginEnabled && (
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            First time here?{" "}
             <Link href="/register" className="font-medium text-primary hover:underline">
-              create an account
+              Create an account
             </Link>{" "}
-            first so we can verify your Rotary membership.
-          </div>
+            — then sign in with Google to continue.
+          </p>
         )}
 
         {emailLoginEnabled && (

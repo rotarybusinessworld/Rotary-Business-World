@@ -46,16 +46,14 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
     // Primary guard is sendVerificationRequest (no email sent); this catches
     // stale VerificationToken rows that somehow survive without a user.
     async signIn({ user, account }) {
-      if (account?.provider === "resend" || account?.provider === "google") {
+      // Magic link: only allow sign-in for emails already in our User table.
+      // Google: allow everyone — new users are created by PrismaAdapter with
+      // status=REGISTERED, then redirected to /onboarding/rotary-profile.
+      if (account?.provider === "resend") {
         const exists = await db.user.findUnique({
           where: { email: user.email! },
           select: { id: true },
         });
-        if (!exists && account.provider === "google") {
-          // Redirect to register with the Google email pre-filled so the user
-          // understands they need to create an account first.
-          return `/register?email=${encodeURIComponent(user.email!)}&hint=google`;
-        }
         return !!exists;
       }
       return true;

@@ -48,14 +48,14 @@ const included = [
 export default async function PaymentPage() {
   const user = await requireUser();
 
-  // Already past the payment step → straight to dashboard
   const record = await db.user.findUnique({
     where: { id: user.id },
     select: { status: true },
   });
-  if (record && record.status !== "PAYMENT_PENDING" && record.status !== "REGISTERED") {
-    redirect("/dashboard");
-  }
+  // Profile not yet complete — must fill in Rotary details first.
+  if (record?.status === "REGISTERED") redirect("/onboarding/rotary-profile");
+  // Already past the payment step → straight to dashboard.
+  if (record && record.status !== "PAYMENT_PENDING") redirect("/dashboard");
 
   const hasRazorpay = !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
 

@@ -17,6 +17,20 @@ export const registerSchema = z.object({
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
+// Same as registerSchema minus email — for Google OAuth users who authenticated
+// first and now need to complete their Rotary membership details.
+export const rotaryProfileSchema = z.object({
+  fullName: z.string().min(2, "Please enter your full name").max(120),
+  rotaryId: z.string().min(3, "Enter your Rotary / membership ID").max(40),
+  clubName: z.string().min(2, "Enter your club name").max(160),
+  districtId: z.string().min(1, "Select your district"),
+  phone: z
+    .string()
+    .regex(/^[0-9+()\-\s]{7,40}$/, "Enter a valid phone number"),
+  country: z.string().min(2).max(80).optional(),
+});
+export type RotaryProfileInput = z.infer<typeof rotaryProfileSchema>;
+
 export const loginSchema = z.object({
   email: z.string().email("Enter a valid email"),
 });
