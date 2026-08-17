@@ -1,6 +1,7 @@
 "use server";
 
 import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
 import { signIn } from "@/backend/auth";
 import { registerSchema, loginSchema } from "@/shared/validators";
 import { registerMember } from "@/backend/services/registration";
@@ -45,23 +46,10 @@ export async function registerAction(
     throw err;
   }
 
-  // Registration complete — send the magic-link so the user can sign in and
-  // land on /onboarding/payment. signIn() redirects to /verify-request;
-  // rethrow anything that isn't an AuthError so Next.js handles the redirect.
-  try {
-    await signIn("resend", {
-      email: data.email.toLowerCase(),
-      redirectTo: "/onboarding/payment",
-    });
-  } catch (err) {
-    if (err instanceof AuthError) {
-      return {
-        error: "Account created but email could not be sent. Please sign in.",
-      };
-    }
-    throw err;
-  }
-  return { ok: true };
+  // Registration complete. Redirect to login with a success flag so the login
+  // page can show a "sign in with Google" prompt. redirect() throws internally
+  // so no return is needed after it.
+  redirect("/login?registered=1");
 }
 
 export async function googleSignInAction(formData: FormData): Promise<void> {

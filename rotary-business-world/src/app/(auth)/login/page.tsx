@@ -9,5 +9,6 @@ export default async function LoginPage({
 }) {
   const sp = await searchParams;
   const next = typeof sp.next === "string" ? sp.next : "";
-  return <LoginForm next={next} />;
+  const registered = sp.registered === "1";
+  return <LoginForm next={next} registered={registered} />;
 }

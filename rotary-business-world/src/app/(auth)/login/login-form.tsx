@@ -24,7 +24,7 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, registered }: { next: string; registered?: boolean }) {
   const [state, action] = useActionState<FormState, FormData>(loginAction, {});
 
   return (
@@ -39,6 +39,12 @@ export function LoginForm({ next }: { next: string }) {
         <p className="mt-1 mb-6 text-sm text-muted-foreground">
           Enter your email and we&apos;ll send you a sign-in link.
         </p>
+
+        {registered && (
+          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 dark:border-green-800 dark:bg-green-950/40 dark:text-green-200">
+            Account created! Sign in with Google below to continue.
+          </div>
+        )}
 
         <form action={googleSignInAction}>
           {next && <input type="hidden" name="next" value={next} />}
