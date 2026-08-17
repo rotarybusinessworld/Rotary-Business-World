@@ -24,7 +24,15 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm({ next, registered }: { next: string; registered?: boolean }) {
+export function LoginForm({
+  next,
+  registered,
+  emailLoginEnabled,
+}: {
+  next: string;
+  registered?: boolean;
+  emailLoginEnabled?: boolean;
+}) {
   const [state, action] = useActionState<FormState, FormData>(loginAction, {});
 
   return (
@@ -41,7 +49,7 @@ export function LoginForm({ next, registered }: { next: string; registered?: boo
         </p>
 
         {registered && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 dark:border-green-800 dark:bg-green-950/40 dark:text-green-200">
+          <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 dark:border-green-800 dark:bg-green-950/40 dark:text-green-200">
             Account created! Sign in with Google below to continue.
           </div>
         )}
@@ -62,31 +70,47 @@ export function LoginForm({ next, registered }: { next: string; registered?: boo
           </button>
         </form>
 
-        <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-xs text-muted-foreground">or sign in with email</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-
-        <form action={action} className="space-y-4">
-          {next && <input type="hidden" name="next" value={next} />}
-
-          <FormError message={state.error} />
-
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-            />
-            <FieldError messages={state.fieldErrors?.email} />
+        {/* New-user notice — shown when Resend is off (no email fallback visible) */}
+        {!emailLoginEnabled && !registered && (
+          <div className="mt-4 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">New here?</span> Google sign-in is for
+            existing members only. You need to{" "}
+            <Link href="/register" className="font-medium text-primary hover:underline">
+              create an account
+            </Link>{" "}
+            first so we can verify your Rotary membership.
           </div>
+        )}
 
-          <SubmitButton />
-        </form>
+        {emailLoginEnabled && (
+          <>
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">or sign in with email</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <form action={action} className="space-y-4">
+              {next && <input type="hidden" name="next" value={next} />}
+
+              <FormError message={state.error} />
+
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                />
+                <FieldError messages={state.fieldErrors?.email} />
+              </div>
+
+              <SubmitButton />
+            </form>
+          </>
+        )}
 
         <div className="mt-6 border-t border-border pt-5 text-center">
           <p className="text-sm text-muted-foreground">
