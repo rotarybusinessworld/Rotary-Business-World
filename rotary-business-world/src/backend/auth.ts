@@ -15,6 +15,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     }),
     ResendProvider({
       apiKey: process.env.RESEND_API_KEY,
