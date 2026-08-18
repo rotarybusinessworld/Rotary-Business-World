@@ -21,7 +21,10 @@ export default async function EditBusinessPage({
 
   const business = await db.business.findFirst({
     where: { id, ownerId: user.id },
-    include: { images: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      images: { orderBy: { sortOrder: "asc" } },
+      offerings: { orderBy: { createdAt: "asc" } },
+    },
   });
   if (!business) notFound();
 
@@ -72,6 +75,13 @@ export default async function EditBusinessPage({
                 gallery: business.images.map((img) => img.key),
                 discountPercent: business.discountPercent,
                 discountNote: business.discountNote,
+                offerings: business.offerings.map((o) => ({
+                  categoryId: o.categoryId,
+                  title: o.title,
+                  tradeRoles: o.tradeRoles,
+                  keywords: o.keywords,
+                  minOrderQty: o.minOrderQty,
+                })),
               }}
             />
           </CardContent>

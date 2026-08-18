@@ -36,6 +36,52 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+// Trade role (seller) + trade intent (buyer) literals. Kept as plain string
+// unions in the shared layer so client components can import them without
+// pulling @prisma/client enum objects into the browser bundle. They mirror the
+// Prisma TradeRole / TradeIntent enums exactly.
+export const TRADE_ROLES = [
+  "MANUFACTURER",
+  "WHOLESALER",
+  "RETAILER",
+  "SERVICE_PROVIDER",
+] as const;
+export type TradeRole = (typeof TRADE_ROLES)[number];
+
+export const TRADE_INTENTS = [
+  "BUY_RETAIL",
+  "BUY_WHOLESALE",
+  "MANUFACTURING",
+  "HIRE_SERVICE",
+] as const;
+export type TradeIntent = (typeof TRADE_INTENTS)[number];
+
+export const SERVICE_REACHES = [
+  "DISTRICT",
+  "STATE",
+  "NATIONAL",
+  "INTERNATIONAL",
+] as const;
+export type ServiceReach = (typeof SERVICE_REACHES)[number];
+
+// A single seller-catalog entry. tradeRoles is non-empty by design — a business
+// with no declared trade role cannot be matched correctly (see docs/NEEDS-LEADS.md
+// §3.3). Hard cap MAX_OFFERINGS (20) is enforced in the service via guardrails.ts;
+// the array cap here is a generous first line only.
+export const offeringSchema = z.object({
+  categoryId: z.string().min(1, "Pick a category"),
+  title: z.string().trim().min(2, "Add a short title").max(160),
+  tradeRoles: z
+    .array(z.enum(TRADE_ROLES))
+    .min(1, "Pick at least one: manufacturer, wholesaler, retailer or service")
+    .max(4),
+  keywords: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+  minOrderQty: z.string().trim().max(60).optional().nullable(),
+});
+export type OfferingInput = z.infer<typeof offeringSchema>;
+
+export const offeringsSchema = z.array(offeringSchema).max(20);
+
 export const businessSchema = z.object({
   name: z.string().min(2, "Business name is required").max(160),
   description: z.string().max(4000).optional().or(z.literal("")),
@@ -59,6 +105,26 @@ export const businessSchema = z.object({
   discountNote: z.string().max(120).optional().or(z.literal("")),
 });
 export type BusinessInput = z.infer<typeof businessSchema>;
+
+// Buyer-posted Need (lead). Geography (district/country) is resolved server-side
+// from the member, never trusted from the client. See docs/NEEDS-LEADS.md §5.
+export const needSchema = z.object({
+  categoryId: z.string().min(1, "Pick a category"),
+  tradeIntent: z.enum(TRADE_INTENTS),
+  reachWanted: z.enum(SERVICE_REACHES),
+  quantity: z.string().max(120).optional().or(z.literal("")),
+  budgetMin: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().int().min(0).max(1_000_000_000).optional(),
+  ),
+  budgetMax: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().int().min(0).max(1_000_000_000).optional(),
+  ),
+  notes: z.string().max(2000).optional().or(z.literal("")),
+  urgent: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()).optional(),
+});
+export type NeedFormInput = z.infer<typeof needSchema>;
 
 export const sendMessageSchema = z.object({
   conversationId: z.string().min(1, "Missing conversation"),

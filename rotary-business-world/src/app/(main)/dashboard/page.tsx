@@ -14,6 +14,7 @@ import {
   Eye,
   Globe2,
   MapPin,
+  PackageSearch,
   Plus,
   Settings,
   ShieldCheck,
@@ -59,7 +60,13 @@ export default async function DashboardPage() {
           </div>
 
           {verified && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/dashboard/needs"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                <PackageSearch className="h-4 w-4" /> Post a need
+              </Link>
               <Link
                 href="/dashboard/profile"
                 className={buttonVariants({ variant: "outline" })}

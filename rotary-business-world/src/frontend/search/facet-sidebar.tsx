@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { cn } from "@/shared/utils";
 import type { Facet } from "@/backend/search/types";
+import { tradeRoleLabel } from "@/shared/trade";
 import { withParam, clearFiltersHref, type FacetCurrent } from "./facet-utils";
 
 function FacetGroup({
@@ -9,11 +10,14 @@ function FacetGroup({
   paramKey,
   facets,
   current,
+  labelFor,
 }: {
   title: string;
   paramKey: string;
   facets: Facet[];
   current: FacetCurrent;
+  /** Map a raw facet value to a display label (value still drives the URL). */
+  labelFor?: (v: string) => string;
 }) {
   if (facets.length === 0) return null;
   const active = current[paramKey];
@@ -46,7 +50,9 @@ function FacetGroup({
                     )}
                     aria-hidden
                   />
-                  <span className="truncate">{f.value}</span>
+                  <span className="truncate">
+                    {labelFor ? labelFor(f.value) : f.value}
+                  </span>
                 </span>
                 <span className="shrink-0">
                   {isActive ? (
@@ -68,10 +74,15 @@ export function FacetSidebar({
   facets,
   current,
 }: {
-  facets: { industry: Facet[]; country: Facet[] };
+  facets: { industry: Facet[]; country: Facet[]; tradeRole: Facet[] };
   current: FacetCurrent;
 }) {
-  const hasFilters = current.industry || current.category || current.country || current.city;
+  const hasFilters =
+    current.industry ||
+    current.category ||
+    current.country ||
+    current.city ||
+    current.tradeRole;
 
   return (
     <div className="rounded-[var(--radius)] border border-border bg-card shadow-[var(--shadow-card)]">
@@ -97,6 +108,13 @@ export function FacetSidebar({
           paramKey="industry"
           facets={facets.industry}
           current={current}
+        />
+        <FacetGroup
+          title="Supplier type"
+          paramKey="tradeRole"
+          facets={facets.tradeRole}
+          current={current}
+          labelFor={tradeRoleLabel}
         />
         <FacetGroup
           title="Country"

@@ -37,16 +37,17 @@ export default async function DirectoryPage({
   const category = first(sp.category);
   const country = first(sp.country);
   const city = first(sp.city);
+  const tradeRole = first(sp.tradeRole);
   const page = Number(first(sp.page) ?? "1") || 1;
   // "Search instead for <original>" link sets force=1 to bypass did-you-mean.
   const forceOriginal = first(sp.force) === "1";
 
   const [result, taxonomy] = await Promise.all([
-    getSearchService().search({ q, industry, category, country, city, page, forceOriginal }),
+    getSearchService().search({ q, industry, category, country, city, tradeRole, page, forceOriginal }),
     loadTaxonomy(),
   ]);
 
-  const current = { q, industry, category, country, city };
+  const current = { q, industry, category, country, city, tradeRole };
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
   const filterCount = activeFilterCount(current);
 

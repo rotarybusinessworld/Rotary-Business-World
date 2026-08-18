@@ -22,19 +22,19 @@ enum Role {
 }
 
 enum UserStatus {
-  REGISTERED            // account created, email unconfirmed
-  PAYMENT_PENDING       // email confirmed, awaiting membership payment
-  PENDING_VERIFICATION  // paid, sitting in the district admin queue
+  REGISTERED // account created, email unconfirmed
+  PAYMENT_PENDING // email confirmed, awaiting membership payment
+  PENDING_VERIFICATION // paid, sitting in the district admin queue
   VERIFIED
   REJECTED
-  SUSPENDED             // admin takedown; all access blocked
+  SUSPENDED // admin takedown; all access blocked
 }
 
 enum BusinessStatus {
-  PENDING   // awaiting district admin review — invisible in search
-  DRAFT     // owner saved but not yet submitted
-  APPROVED  // approved and live
-  REJECTED  // rejected; owner can revise and resubmit (re-enters as PENDING)
+  PENDING // awaiting district admin review — invisible in search
+  DRAFT // owner saved but not yet submitted
+  APPROVED // approved and live
+  REJECTED // rejected; owner can revise and resubmit (re-enters as PENDING)
   SUSPENDED // taken down by an admin after going live
 }
 
@@ -43,6 +43,41 @@ enum ServiceReach {
   STATE
   NATIONAL
   INTERNATIONAL
+}
+
+// How a business supplies a given offering. Multi-select, lives on the offering
+// (a firm may manufacture truck tyres but only retail car tyres). Denormalized
+// as a union onto Business.tradeRoles for the directory facet. See docs/NEEDS-LEADS.md §3.3.
+enum TradeRole {
+  MANUFACTURER // makes it — incl. OEM / job work / custom production
+  WHOLESALER // bulk supply, distribution, trading — for resale
+  RETAILER // sells to end users, small quantity
+  SERVICE_PROVIDER // professional/technical services — not a goods business
+}
+
+// What kind of transaction a buyer wants. Maps asymmetrically to seller TradeRoles
+// via backend/config/trade-matching.ts — NOT an exact match. See docs/NEEDS-LEADS.md §6.1.
+enum TradeIntent {
+  BUY_RETAIL // buying for own use → RETAILER
+  BUY_WHOLESALE // buying for resale / in bulk → WHOLESALER, MANUFACTURER
+  MANUFACTURING // getting something made to order → MANUFACTURER
+  HIRE_SERVICE // hiring a service → SERVICE_PROVIDER
+}
+
+enum NeedStatus {
+  OPEN
+  CLOSED
+  EXPIRED
+}
+
+enum NeedUrgency {
+  STANDARD
+  URGENT
+}
+
+enum MatchFeedback {
+  RELEVANT
+  NOT_RELEVANT
 }
 
 enum VerificationStatus {
@@ -73,8 +108,8 @@ model User {
   profile              Profile?
   rotaryInfo           RotaryInfo?
   businesses           Business[]
-  verificationRequests VerificationRequest[] @relation("RequestUser")
-  reviewedRequests     VerificationRequest[] @relation("ReviewerUser")
+  verificationRequests VerificationRequest[]    @relation("RequestUser")
+  reviewedRequests     VerificationRequest[]    @relation("ReviewerUser")
   emailTokens          EmailVerificationToken[]
   accounts             Account[]
 
@@ -92,6 +127,9 @@ model User {
   // Business reviews written by this user.
   reviews Review[]
 
+  // Needs (buyer-side leads) posted by this user.
+  needs Need[]
+
   @@index([status])
   @@index([managedDistrictId])
 }
@@ -101,7 +139,7 @@ model Profile {
   userId    String  @unique
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName  String
-  photoUrl  String?  // TODO Day 4b: rename to photoKey once profile upload migrated
+  photoUrl  String? // TODO Day 4b: rename to photoKey once profile upload migrated
   bio       String?
   phone     String?
   whatsapp  String?
@@ -115,18 +153,18 @@ model Profile {
 }
 
 model RotaryInfo {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rotaryId       String?
-  clubId         String?
-  club           Club?     @relation(fields: [clubId], references: [id])
-  districtId     String?
-  district       District? @relation(fields: [districtId], references: [id])
-  classification String?
-  memberSince    Int?
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rotaryId        String?
+  clubId          String?
+  club            Club?         @relation(fields: [clubId], references: [id])
+  districtId      String?
+  district        District?     @relation(fields: [districtId], references: [id])
+  classification  String?
+  memberSince     Int?
   matchedRosterId String?
-  matchedRoster  RosterMember? @relation(fields: [matchedRosterId], references: [id])
+  matchedRoster   RosterMember? @relation(fields: [matchedRosterId], references: [id])
 
   @@unique([matchedRosterId]) // one verified account per roster identity (NULLs allowed)
   @@index([rotaryId])
@@ -156,8 +194,9 @@ model District {
   clubs         Club[]
   rotaryInfos   RotaryInfo[]
   rosterMembers RosterMember[]
-  admins        User[]     @relation("DistrictAdmins")
+  admins        User[]         @relation("DistrictAdmins")
   businesses    Business[]
+  needs         Need[]
 
   @@index([country])
 }
@@ -189,7 +228,7 @@ model RosterMember {
   clubId       String?
   club         Club?     @relation(fields: [clubId], references: [id])
   districtId   String?
-  district     District?  @relation(fields: [districtId], references: [id])
+  district     District? @relation(fields: [districtId], references: [id])
   source       String    @default("import")
   importedAt   DateTime  @default(now())
 
@@ -213,11 +252,11 @@ model Industry {
 }
 
 model Category {
-  id         String     @id @default(cuid())
+  id         String   @id @default(cuid())
   name       String
-  slug       String     @unique
+  slug       String   @unique
   industryId String
-  industry   Industry   @relation(fields: [industryId], references: [id])
+  industry   Industry @relation(fields: [industryId], references: [id])
 
   // Depth-3 taxonomy tree. parentId null = top-level category (depth 0).
   // path is a slash-separated ancestry string, e.g. "printing/offset-printing".
@@ -226,11 +265,12 @@ model Category {
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children Category[] @relation("CategoryTree")
   path     String     @default("") // e.g. "printing" or "printing/offset-printing"
-  depth    Int        @default(0)  // 0 = top-level, 1 = sub, 2 = leaf
+  depth    Int        @default(0) // 0 = top-level, 1 = sub, 2 = leaf
   synonyms String[]   @default([]) // search aliases, e.g. ["press", "reprographics"]
 
   businesses Business[]
   offerings  BusinessOffering[]
+  needs      Need[]
 
   @@index([industryId])
   @@index([parentId])
@@ -238,52 +278,62 @@ model Category {
 }
 
 model Business {
-  id          String         @id @default(cuid())
-  ownerId     String
-  owner       User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  name        String
-  slug        String         @unique
-  description String?
-  logoKey     String?        // storage key, e.g. "logos/uuid.jpg"; resolve to URL at read time
-  coverKey    String?
-  industryId  String?
-  industry    Industry?      @relation(fields: [industryId], references: [id])
-  categoryId  String?
-  category    Category?      @relation(fields: [categoryId], references: [id])
+  id              String         @id @default(cuid())
+  ownerId         String
+  owner           User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name            String
+  slug            String         @unique
+  description     String?
+  logoKey         String? // storage key, e.g. "logos/uuid.jpg"; resolve to URL at read time
+  coverKey        String?
+  industryId      String?
+  industry        Industry?      @relation(fields: [industryId], references: [id])
+  categoryId      String?
+  category        Category?      @relation(fields: [categoryId], references: [id])
   // Denormalized taxonomy text so the generated tsvector (raw SQL) can index it
   // without cross-table triggers. Kept in sync on every business write.
-  industryName String?
-  categoryName String?
-  website     String?
-  email       String?
-  phone       String?
-  whatsapp    String?
-  addressLine String?
-  city        String?
-  country     String?
-  lat         Float?
-  lng         Float?
-  linkedin    String?
-  instagram   String?
+  industryName    String?
+  categoryName    String?
+  website         String?
+  email           String?
+  phone           String?
+  whatsapp        String?
+  addressLine     String?
+  city            String?
+  country         String?
+  lat             Float?
+  lng             Float?
+  linkedin        String?
+  instagram       String?
   // Rotarian-member discount offered by this business
   discountPercent Int?
   discountNote    String?
-  status      BusinessStatus @default(PENDING)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  status          BusinessStatus @default(PENDING)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   // Geography — denormalized from owner.rotaryInfo for query efficiency.
   // districtId is set at creation from the owner's home district so district-admin
   // scoped queries don't require a two-hop join through RotaryInfo.
   districtId   String?
   district     District?    @relation(fields: [districtId], references: [id])
-  stateCode    String?      // ISO 3166-2 state code, e.g. "IN-TN"
+  stateCode    String? // ISO 3166-2 state code, e.g. "IN-TN"
   serviceReach ServiceReach @default(NATIONAL)
   receiveLeads Boolean      @default(true) // opt-out of Needs/Leads notifications
 
-  images    BusinessImage[]
-  reviews   Review[]
-  offerings BusinessOffering[]
+  // Denormalized union of all offering tradeRoles — directory facet + search only;
+  // Needs/Leads matching always reads the offering. Recomputed whenever offerings change.
+  tradeRoles    TradeRole[]
+  // Denormalized concatenation of offering titles + keywords + category synonyms.
+  // Generated columns can't reference other tables (see industryName/categoryName),
+  // so this is kept in sync on every offering write and folded into the searchVector/
+  // searchText generated columns by prisma/sql/search.sql.
+  offeringsText String?
+
+  images      BusinessImage[]
+  reviews     Review[]
+  offerings   BusinessOffering[]
+  needMatches NeedMatch[]
 
   // searchVector and searchText are both GENERATED ALWAYS ... STORED columns
   // managed by prisma/sql/search.sql (npm run db:search). Declaring them here
@@ -306,7 +356,7 @@ model BusinessImage {
   id         String   @id @default(cuid())
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  key        String   // storage key; resolve to URL at read time via keyToUrl()
+  key        String // storage key; resolve to URL at read time via keyToUrl()
   sortOrder  Int      @default(0)
 
   @@index([businessId])
@@ -317,17 +367,106 @@ model BusinessImage {
 /// business's single company-wide category. Hard-capped at MAX_OFFERINGS per business
 /// (enforced in src/backend/config/guardrails.ts) to prevent gaming.
 model BusinessOffering {
-  id         String   @id @default(cuid())
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
-  title      String   // e.g. "Offset & Digital Printing"
-  keywords   String[] @default([])
-  createdAt  DateTime @default(now())
+  id          String      @id @default(cuid())
+  businessId  String
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+  title       String // e.g. "Offset & Digital Printing"
+  keywords    String[]    @default([])
+  // How this business supplies THIS offering. Non-empty — enforced in zod + service
+  // layer, NOT a schema default: a business with no declared role cannot be matched
+  // correctly, so it must not be possible to create one.
+  tradeRoles  TradeRole[]
+  minOrderQty String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
 
+  matches NeedMatch[]
+
+  @@unique([businessId, categoryId]) // one offering per category per business
   @@index([businessId])
-  @@index([categoryId])
+  @@index([categoryId, isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Needs / Leads (buyer posts a Need → matching engine → NeedMatch per business)
+//
+// IndiaMART-pattern lead matching. Needs match seller OFFERINGS (not the
+// business's single company category), then roll up to the owning business.
+// Matching runs in the `match-need` worker job — never inline. Delivery is
+// in-app (NeedMatch rows surfaced in the owner's leads inbox); the digest
+// email columns (digestedAt/sentAt) back a future email channel.
+// Full spec: docs/NEEDS-LEADS.md.
+// ---------------------------------------------------------------------------
+
+model Need {
+  id       String @id @default(cuid())
+  memberId String
+  member   User   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  categoryId String // leaf preferred, any level allowed
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  // What kind of transaction the buyer wants. Required, no default — guessing this
+  // wrong wastes every notification the need sends. Maps to seller TradeRoles via
+  // backend/config/trade-matching.ts (asymmetric — see docs/NEEDS-LEADS.md §6.1).
+  tradeIntent TradeIntent
+
+  districtId  String // buyer's district — resolved from rotaryInfo at create time
+  district    District     @relation(fields: [districtId], references: [id])
+  stateCode   String?
+  country     String?
+  // How far the buyer is willing to source from. Drives the geo filter.
+  reachWanted ServiceReach @default(STATE)
+
+  quantity  String? // "50 units", "wholesale" — displayed, NEVER parsed for matching
+  budgetMin Int?
+  budgetMax Int?
+  notes     String? // supplementary free text — displayed, NEVER a matching signal
+
+  urgency   NeedUrgency @default(STANDARD)
+  status    NeedStatus  @default(OPEN)
+  createdAt DateTime    @default(now())
+  expiresAt DateTime // set explicitly at create: now + 14d (never a schema default)
+  closedAt  DateTime?
+
+  matches NeedMatch[]
+
+  @@index([status, categoryId, districtId])
+  @@index([status, expiresAt])
+  @@index([memberId, createdAt])
+}
+
+model NeedMatch {
+  id         String            @id @default(cuid())
+  needId     String
+  need       Need              @relation(fields: [needId], references: [id], onDelete: Cascade)
+  businessId String
+  business   Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  // Which offering matched — for tuning. Nullable so a match survives offering deletion.
+  offeringId String?
+  offering   BusinessOffering? @relation(fields: [offeringId], references: [id], onDelete: SetNull)
+
+  score          Int // 0–100, see docs/NEEDS-LEADS.md §6
+  scoreBreakdown Json // { category, geo, keyword, quality, fairness }
+
+  matchedAt  DateTime       @default(now())
+  digestedAt DateTime? // reserved for future email-digest batching
+  // Delivery marker (channel-agnostic): set when the lead is surfaced to the
+  // owner — in-app today, email later. Null rows are below-threshold / over-cap
+  // matches kept only as the tuning dataset; they never surface in the inbox.
+  sentAt     DateTime?
+  // Null until the owner opens the lead. Drives the unviewed count on the
+  // notification bell (derived-unread, mirroring messaging).
+  viewedAt   DateTime?
+  feedback   MatchFeedback? // one-click "Not relevant" from the leads inbox
+  feedbackAt DateTime?
+
+  @@unique([needId, businessId]) // idempotency guard — createMany(skipDuplicates)
+  @@index([businessId, viewedAt]) // "unviewed leads for this owner"
+  @@index([businessId, matchedAt])
+  @@index([businessId, sentAt]) // weekly fairness-budget window
 }
 
 // Auth.js v5 Prisma adapter models — required for magic-link email provider.
@@ -461,7 +600,7 @@ model Review {
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   reviewerId String
   reviewer   User     @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
-  rating     Int      // 1–5
+  rating     Int // 1–5
   body       String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -475,9 +614,9 @@ model Review {
 // ---------------------------------------------------------------------------
 
 enum PaymentStatus {
-  CREATED     // order created, awaiting capture
+  CREATED // order created, awaiting capture
   AUTHORIZED
-  CAPTURED    // money received; triggers PENDING_VERIFICATION
+  CAPTURED // money received; triggers PENDING_VERIFICATION
   FAILED
   REFUNDED
 }
@@ -496,10 +635,10 @@ model Payment {
   source            PaymentSource @default(RAZORPAY)
   razorpayOrderId   String?       @unique // null for DEMO; set at order creation for Razorpay
   razorpayPaymentId String?       @unique // null until capture
-  amount            Int           // minor units (paise), from payment response
-  currency          String        // ISO 4217, e.g. "INR"
+  amount            Int // minor units (paise), from payment response
+  currency          String // ISO 4217, e.g. "INR"
   status            PaymentStatus @default(CREATED)
-  settledAt         DateTime?     // set when status → CAPTURED
+  settledAt         DateTime? // set when status → CAPTURED
   createdAt         DateTime      @default(now())
 
   @@index([userId])
@@ -511,8 +650,8 @@ model Payment {
 /// before any business logic runs.
 model WebhookEvent {
   id          String    @id @default(cuid())
-  provider    String                       // "razorpay"
-  eventId     String    @unique            // provider-scoped unique key, e.g. "payment.captured:{paymentId}"
+  provider    String // "razorpay"
+  eventId     String    @unique // provider-scoped unique key, e.g. "payment.captured:{paymentId}"
   eventType   String
   payload     Json
   status      String    @default("RECEIVED")

@@ -3,6 +3,27 @@ import { slugify } from "../src/shared/utils";
 
 const db = new PrismaClient();
 
+// Recall synonyms per category — fed into the search vector (via offeringsText)
+// and available to the category picker. Only the notable ones; the rest default [].
+const CATEGORY_SYNONYMS: Record<string, string[]> = {
+  Textiles: ["fabric", "cloth", "yarn", "garments"],
+  Packaging: ["boxes", "cartons", "pouches", "corrugated"],
+  Chemicals: ["dyes", "solvents", "industrial chemicals", "coatings"],
+  Machinery: ["equipment", "industrial machines", "fabrication"],
+  "Auto Parts": ["components", "castings", "forgings", "spare parts"],
+  Restaurant: ["dining", "food", "eatery"],
+  Catering: ["caterer", "banquet", "events food"],
+  Bakery: ["bakes", "cakes", "bread", "patisserie"],
+  Software: ["development", "apps", "saas", "programming"],
+  "IT Services": ["managed it", "support", "networking"],
+  Jewellery: ["gold", "jewelry", "diamonds", "ornaments"],
+  Wholesale: ["bulk", "distributor", "trading", "supplier"],
+  Legal: ["law", "advocate", "attorney", "compliance"],
+  Accounting: ["ca", "audit", "tax", "bookkeeping"],
+  Freight: ["shipping", "cargo", "forwarding", "logistics"],
+  Transport: ["trucking", "haulage", "fleet"],
+};
+
 // A compact, sensible industry → category taxonomy for the directory + facets.
 const TAXONOMY: Record<string, string[]> = {
   "Food & Hospitality": ["Restaurant", "Catering", "Hotel", "Bakery", "Cafe"],
@@ -46,10 +67,14 @@ async function main() {
     });
     for (const categoryName of categories) {
       const slug = slugify(`${industryName}-${categoryName}`);
+      const synonyms = CATEGORY_SYNONYMS[categoryName] ?? [];
       await db.category.upsert({
         where: { slug },
-        update: {},
-        create: { name: categoryName, slug, industryId: industry.id },
+        // Backfill path/synonyms on existing rows too, so reseeds stay consistent.
+        update: { path: slug, depth: 0, synonyms },
+        // path is the materialized ancestry key used for subtree matching
+        // (WHERE path LIKE :prefix || '%'). Flat taxonomy → path == slug.
+        create: { name: categoryName, slug, industryId: industry.id, path: slug, depth: 0, synonyms },
       });
     }
   }

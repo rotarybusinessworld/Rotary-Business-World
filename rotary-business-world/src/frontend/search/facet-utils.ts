@@ -4,7 +4,13 @@
  * Pure TS — safe to import from either server or client components.
  */
 
+import { tradeRoleLabel } from "@/shared/trade";
+
 export type FacetCurrent = Record<string, string | undefined>;
+
+// Facet keys that participate in filtering. tradeRole is the IndiaMART-style
+// Manufacturer/Wholesaler/Retailer/Service filter.
+const FILTER_KEYS = ["industry", "category", "country", "city", "tradeRole"] as const;
 
 /** Toggle a facet param on/off. If `value` matches what's active, removes it; else sets it. */
 export function withParam(
@@ -29,22 +35,19 @@ export function clearFiltersHref(current: FacetCurrent): string {
     : "/directory";
 }
 
-/** Number of active facet filters (industry, category, country, city). */
+/** Number of active facet filters (industry, category, country, city, tradeRole). */
 export function activeFilterCount(current: FacetCurrent): number {
-  return (["industry", "category", "country", "city"] as const).filter(
-    (k) => !!current[k],
-  ).length;
+  return FILTER_KEYS.filter((k) => !!current[k]).length;
 }
 
 /** Active facet chips — key/label/removeHref tuples for display. */
 export function activeFilterChips(
   current: FacetCurrent,
 ): { key: string; label: string; href: string }[] {
-  return (["industry", "category", "country", "city"] as const)
-    .filter((k) => !!current[k])
-    .map((key) => ({
-      key,
-      label: current[key]!,
-      href: withParam(current, key), // omitting value removes the key
-    }));
+  return FILTER_KEYS.filter((k) => !!current[k]).map((key) => ({
+    key,
+    // Trade role is an enum value — show its human label in the chip.
+    label: key === "tradeRole" ? tradeRoleLabel(current[key]!) : current[key]!,
+    href: withParam(current, key), // omitting value removes the key
+  }));
 }

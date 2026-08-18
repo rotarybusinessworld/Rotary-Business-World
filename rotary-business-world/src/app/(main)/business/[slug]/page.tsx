@@ -113,6 +113,7 @@ export default async function BusinessDetailPage({
     industryName: b.industryName,
     categoryName: b.categoryName,
     ownerVerified: b.owner.status === "VERIFIED",
+    tradeRoles: b.tradeRoles,
   }));
 
   // Contact pills for the action bar

@@ -34,10 +34,18 @@ DROP TRIGGER IF EXISTS business_search_vector_trigger ON "Business";
 DROP FUNCTION IF EXISTS business_search_vector_update();
 
 -- ── Weighted full-text vector (GENERATED STORED) ───────────────────────────
---   A = name              (highest relevance)
---   B = industry/category (the "same thing" facet)
---   C = city/country      (where)
---   D = description       (long tail)
+--   A = name                    (highest relevance)
+--   B = industry/category       (the "same thing" facet)
+--   B = offeringsText           (the seller catalog — products/services/keywords;
+--                                this is what makes "search everything" work like
+--                                IndiaMART: a query for "truck tyres" hits a firm
+--                                whose *name* is "Sharma Auto" via its offerings)
+--   C = city/country            (where)
+--   D = description             (long tail)
+-- offeringsText is a denormalized column on Business (offering titles + keywords +
+-- category synonyms), kept in sync by the business service on every offering write.
+-- Generated columns cannot reference other tables, hence the denormalization —
+-- same pattern as industryName/categoryName.
 ALTER TABLE "Business"
   DROP COLUMN IF EXISTS "searchVector";
 
@@ -47,6 +55,7 @@ ALTER TABLE "Business"
     setweight(to_tsvector('simple', coalesce("name", '')), 'A') ||
     setweight(to_tsvector('simple', coalesce("industryName", '')), 'B') ||
     setweight(to_tsvector('simple', coalesce("categoryName", '')), 'B') ||
+    setweight(to_tsvector('simple', coalesce("offeringsText", '')), 'B') ||
     setweight(to_tsvector('simple', coalesce("city", '')), 'C') ||
     setweight(to_tsvector('simple', coalesce("country", '')), 'C') ||
     setweight(to_tsvector('english', coalesce("description", '')), 'D')
@@ -73,11 +82,12 @@ ALTER TABLE "Business" DROP COLUMN IF EXISTS "searchText";
 ALTER TABLE "Business"
   ADD COLUMN "searchText" text
   GENERATED ALWAYS AS (
-    coalesce("name", '')         || ' ' ||
-    coalesce("industryName", '') || ' ' ||
-    coalesce("categoryName", '') || ' ' ||
-    coalesce("city", '')         || ' ' ||
-    coalesce("country", '')      || ' ' ||
+    coalesce("name", '')          || ' ' ||
+    coalesce("industryName", '')  || ' ' ||
+    coalesce("categoryName", '')  || ' ' ||
+    coalesce("offeringsText", '') || ' ' ||
+    coalesce("city", '')          || ' ' ||
+    coalesce("country", '')       || ' ' ||
     coalesce("description", '')
   ) STORED;
 

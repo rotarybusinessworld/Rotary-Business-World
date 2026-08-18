@@ -5,6 +5,7 @@ import { BadgeCheck, Building2, MapPin } from "lucide-react";
 import { cn } from "@/shared/utils";
 import type { BusinessHit } from "@/backend/search/types";
 import { toImageSrc } from "@/shared/image";
+import { tradeRoleLabel } from "@/shared/trade";
 
 /**
  * Directory-specific feed card — LinkedIn-style with lift hover and a gold footer CTA.
@@ -78,6 +79,20 @@ export function DirectoryCard({
               </span>
             )}
           </div>
+
+          {/* Supplier type badges (Manufacturer / Wholesaler / …) */}
+          {hit.tradeRoles.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {hit.tradeRoles.map((role) => (
+                <span
+                  key={role}
+                  className="rounded-full border border-rotary-gold/30 bg-rotary-gold/10 px-2 py-0.5 text-[11px] font-medium text-rotary-gold-dark"
+                >
+                  {tradeRoleLabel(role)}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Location */}
           {location && (

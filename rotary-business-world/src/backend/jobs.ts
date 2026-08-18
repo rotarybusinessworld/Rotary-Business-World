@@ -44,3 +44,25 @@ export async function enqueueProcessImage(data: ProcessImagePayload): Promise<vo
     removeOnFail: { count: 500 },
   });
 }
+
+export interface MatchNeedPayload {
+  needId: string;
+}
+
+/**
+ * Enqueue lead matching for a freshly posted Need. Matching is intentionally
+ * out-of-band (see docs/NEEDS-LEADS.md §5): the poster's request returns
+ * immediately; the worker runs the filter + scoring + caps. Retries are safe —
+ * matchNeed() is idempotent via @@unique([needId, businessId]).
+ */
+export async function enqueueMatchNeed(data: MatchNeedPayload): Promise<void> {
+  if (!jobQueue) {
+    throw new Error("REDIS_URL is not configured — cannot enqueue match-need job");
+  }
+  await jobQueue.add("match-need", data, {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 3000 },
+    removeOnComplete: { count: 200 },
+    removeOnFail: { count: 500 },
+  });
+}

@@ -191,6 +191,9 @@ export class PostgresSearchService implements SearchService {
       filters.push(Prisma.sql`b."country" = ${params.country}`);
     if (params.city)
       filters.push(Prisma.sql`b."city" = ${params.city}`);
+    if (params.tradeRole)
+      // Trade role is a denormalized enum array on Business — match if present.
+      filters.push(Prisma.sql`${params.tradeRole} = ANY(b."tradeRoles"::text[])`);
 
     if (q) {
       if (prefixQ) {
@@ -236,7 +239,7 @@ export class PostgresSearchService implements SearchService {
     // ── Queries ─────────────────────────────────────────────────────────────
     const rows = await db.$queryRaw<BusinessHit[]>`
       SELECT b."id", b."name", b."slug", b."logoKey", b."city", b."country",
-             b."industryName", b."categoryName",
+             b."industryName", b."categoryName", b."tradeRoles"::text[] AS "tradeRoles",
              u."status" = 'VERIFIED' AS "ownerVerified"
       FROM   "Business" b
       JOIN   "User"     u ON u."id" = b."ownerId"
@@ -253,9 +256,10 @@ export class PostgresSearchService implements SearchService {
     `;
     const total = Number(totalRows[0]?.count ?? 0);
 
-    const [industry, country] = await Promise.all([
+    const [industry, country, tradeRole] = await Promise.all([
       this._facet("industryName", where),
       this._facet("country", where),
+      this._tradeRoleFacet(where),
     ]);
 
     return {
@@ -269,11 +273,12 @@ export class PostgresSearchService implements SearchService {
         industryName: r.industryName,
         categoryName: r.categoryName,
         ownerVerified: Boolean(r.ownerVerified),
+        tradeRoles: Array.isArray(r.tradeRoles) ? r.tradeRoles : [],
       })),
       total,
       page,
       pageSize,
-      facets: { industry, country },
+      facets: { industry, country, tradeRole },
     };
   }
 
@@ -299,6 +304,23 @@ export class PostgresSearchService implements SearchService {
       LIMIT 1
     `;
     return rows[0]?.term ?? null;
+  }
+
+  /**
+   * Trade-role facet. tradeRoles is a denormalized enum array on Business, so the
+   * value is unnested before counting (a business counts once per distinct role).
+   */
+  private async _tradeRoleFacet(where: Prisma.Sql): Promise<Facet[]> {
+    const rows = await db.$queryRaw<{ value: string; count: bigint }[]>`
+      SELECT role AS value, COUNT(*)::bigint AS count
+      FROM   "Business" b
+      JOIN   "User"     u ON u."id" = b."ownerId"
+      CROSS  JOIN LATERAL unnest(b."tradeRoles"::text[]) AS role
+      WHERE  ${where}
+      GROUP  BY role
+      ORDER  BY count DESC, value ASC
+    `;
+    return rows.map((r) => ({ value: r.value, count: Number(r.count) }));
   }
 
   private async _facet(

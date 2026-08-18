@@ -4,6 +4,8 @@ import { db } from "@/backend/db";
 import { slugify } from "@/shared/utils";
 import { assertVerified, type Actor } from "@/backend/actor";
 import { NotFoundError } from "@/backend/errors";
+import type { OfferingInput } from "@/shared/validators";
+import { buildOfferings } from "./offerings";
 
 /**
  * Business listing domain logic.
@@ -36,6 +38,12 @@ export type BusinessInput = {
   discountNote?: string | null;
   /** Ordered gallery image URLs; replaces the existing gallery on update. */
   gallery?: string[];
+  /**
+   * Seller catalog. Replaces the existing offerings on update (same semantics as
+   * gallery). Drives Needs/Leads matching and folds into search via the
+   * denormalized Business.offeringsText / tradeRoles columns.
+   */
+  offerings?: OfferingInput[];
 };
 
 const MAX_GALLERY = 12;
@@ -105,10 +113,11 @@ export async function createBusiness(
 ): Promise<Business> {
   assertVerified(actor);
 
-  const [taxonomy, rotaryInfo, slug] = await Promise.all([
+  const [taxonomy, rotaryInfo, slug, offerings] = await Promise.all([
     resolveTaxonomy(input.industryId, input.categoryId),
     db.rotaryInfo.findUnique({ where: { userId: actor.id }, select: { districtId: true } }),
     uniqueSlug(input.name),
+    buildOfferings(input.offerings),
   ]);
 
   return db.business.create({
@@ -119,7 +128,10 @@ export async function createBusiness(
       districtId: rotaryInfo?.districtId ?? null,
       ...scalarFields(input),
       ...taxonomy,
+      tradeRoles: offerings.tradeRoles,
+      offeringsText: offerings.offeringsText,
       images: { create: galleryRows(input.gallery) },
+      offerings: { create: offerings.rows },
     },
   });
 }
@@ -153,8 +165,11 @@ export async function updateBusiness(
     throw new NotFoundError("Business not found");
   }
 
-  const taxonomy = await resolveTaxonomy(input.industryId, input.categoryId);
-  const slug = await uniqueSlug(input.name, id);
+  const [taxonomy, slug, offerings] = await Promise.all([
+    resolveTaxonomy(input.industryId, input.categoryId),
+    uniqueSlug(input.name, id),
+    buildOfferings(input.offerings),
+  ]);
 
   // Detect material changes that warrant re-moderation.
   const materialChanged =
@@ -191,7 +206,12 @@ export async function updateBusiness(
       status: nextStatus,
       ...scalarFields(input),
       ...taxonomy,
+      tradeRoles: offerings.tradeRoles,
+      offeringsText: offerings.offeringsText,
+      // Offerings are matching metadata (not part of the public listing display),
+      // so replacing them does not by itself trigger re-moderation.
       images: { deleteMany: {}, create: galleryRows(input.gallery) },
+      offerings: { deleteMany: {}, create: offerings.rows },
     },
   });
 }

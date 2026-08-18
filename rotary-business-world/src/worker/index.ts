@@ -18,7 +18,10 @@ import { Redis } from "ioredis";
 import { PrismaClient } from "@prisma/client";
 import { S3StorageService } from "../backend/storage/s3";
 import { checkMagicBytes, stripExif } from "../backend/image";
-import type { ProcessImagePayload } from "../backend/jobs";
+import type { ProcessImagePayload, MatchNeedPayload } from "../backend/jobs";
+// Import the matcher directly (not the ./needs barrel) so the worker doesn't pull
+// service.ts → jobs.ts, which import the Next-only "server-only" guard.
+import { matchNeed } from "../backend/needs/matching";
 
 const db = new PrismaClient();
 
@@ -100,6 +103,15 @@ async function processJob(job: Job): Promise<void> {
     case "processImage":
       await handleProcessImage(job.data as ProcessImagePayload);
       break;
+
+    case "match-need": {
+      const { needId } = job.data as MatchNeedPayload;
+      const res = await matchNeed(needId);
+      console.log(
+        `[worker] match-need ${needId} → ${res.delivered} delivered, ${res.recorded} recorded`,
+      );
+      break;
+    }
 
     default:
       console.warn(`[worker] unknown job type: ${job.name}`);

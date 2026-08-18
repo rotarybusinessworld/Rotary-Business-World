@@ -8,7 +8,8 @@ import { ProfileMenu } from "@/frontend/profile-menu";
 import { NavSearch } from "@/frontend/search/nav-search";
 import { NavSearchMobile } from "@/frontend/search/nav-search-mobile";
 import * as messaging from "@/backend/messaging";
-import { Compass, LayoutDashboard, MessageCircle, ShieldCheck } from "lucide-react";
+import { countUnviewedLeads } from "@/backend/needs";
+import { Bell, Compass, LayoutDashboard, MessageCircle, ShieldCheck } from "lucide-react";
 
 const navLink =
   "relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-white/60 transition-colors duration-150 hover:bg-white/[0.07] hover:text-white";
@@ -19,7 +20,9 @@ export async function SiteHeader() {
   const isAdmin = user?.role === "MANAGEMENT" || user?.role === "DISTRICT_ADMIN";
   const isVerified = user?.status === "VERIFIED";
   const canMessage = isVerified && !isAdmin;
-  const unread = canMessage ? await messaging.countUnread(user) : 0;
+  const [unread, leadCount] = canMessage
+    ? await Promise.all([messaging.countUnread(user), countUnviewedLeads(user)])
+    : [0, 0];
 
   // Profile photo lives on the Profile model, not the JWT session
   const profile = user
@@ -86,6 +89,17 @@ export async function SiteHeader() {
               </Link>
             )}
             {canMessage && (
+              <Link href="/dashboard/leads" className={navLink} aria-label="Leads">
+                <Bell className="h-3.5 w-3.5" />
+                Leads
+                {leadCount > 0 && (
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rotary-gold px-1 text-[10px] font-bold text-secondary-foreground">
+                    {leadCount > 9 ? "9+" : leadCount}
+                  </span>
+                )}
+              </Link>
+            )}
+            {canMessage && (
               <Link href="/messages" className={navLink}>
                 <MessageCircle className="h-3.5 w-3.5" />
                 Messages
@@ -149,6 +163,7 @@ export async function SiteHeader() {
               isVerified={isVerified}
               canMessage={canMessage}
               unread={unread}
+              leadCount={leadCount}
               userId={user?.id}
               userInitial={user ? displayName.charAt(0).toUpperCase() : undefined}
               userName={displayName || undefined}

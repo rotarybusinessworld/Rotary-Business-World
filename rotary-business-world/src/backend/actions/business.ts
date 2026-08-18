@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireVerified } from "@/backend/auth-helpers";
-import { businessSchema } from "@/shared/validators";
+import { businessSchema, offeringsSchema, type OfferingInput } from "@/shared/validators";
 import * as businessService from "@/backend/services/business";
 import { isAppError } from "@/backend/errors";
 
@@ -35,13 +35,37 @@ function parseGallery(raw: FormDataEntryValue | null): string[] {
   }
 }
 
+/**
+ * Parse + validate the offerings hidden field (JSON array, same pattern as the
+ * gallery). Returns typed offerings, or field errors if the JSON is malformed or
+ * fails the offering schema (e.g. an offering with no trade role).
+ */
+function parseOfferings(
+  raw: FormDataEntryValue | null,
+): { offerings: OfferingInput[] } | { fieldErrors: Record<string, string[]> } {
+  if (!raw) return { offerings: [] };
+  let json: unknown;
+  try {
+    json = JSON.parse(String(raw));
+  } catch {
+    return { fieldErrors: { offerings: ["Could not read your offerings — please retry"] } };
+  }
+  const parsed = offeringsSchema.safeParse(json);
+  if (!parsed.success) {
+    return { fieldErrors: { offerings: ["Every offering needs a category, a title and a trade role"] } };
+  }
+  return { offerings: parsed.data };
+}
+
 /** FormData → the service's typed input. */
 function toInput(
   formData: FormData,
   parsed: { name: string },
+  offerings: OfferingInput[],
 ): businessService.BusinessInput {
   return {
     name: parsed.name,
+    offerings,
     description: orNull(formData.get("description")),
     industryId: orNull(formData.get("industryId")),
     categoryId: orNull(formData.get("categoryId")),
@@ -77,11 +101,14 @@ export async function createBusiness(
   const parsed = businessSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
 
+  const offerings = parseOfferings(formData.get("offerings"));
+  if ("fieldErrors" in offerings) return { fieldErrors: offerings.fieldErrors };
+
   let slug: string;
   try {
     const business = await businessService.createBusiness(
       user,
-      toInput(formData, parsed.data),
+      toInput(formData, parsed.data, offerings.offerings),
     );
     slug = business.slug;
   } catch (err) {
@@ -103,12 +130,15 @@ export async function updateBusiness(
   const parsed = businessSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
 
+  const offerings = parseOfferings(formData.get("offerings"));
+  if ("fieldErrors" in offerings) return { fieldErrors: offerings.fieldErrors };
+
   let slug: string;
   try {
     const business = await businessService.updateBusiness(
       user,
       id,
-      toInput(formData, parsed.data),
+      toInput(formData, parsed.data, offerings.offerings),
     );
     slug = business.slug;
   } catch (err) {

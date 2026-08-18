@@ -109,6 +109,7 @@ export default async function MemberProfilePage({
     industryName: b.industryName,
     categoryName: b.categoryName,
     ownerVerified: verified,
+    tradeRoles: b.tradeRoles,
   }));
 
   const fullName = member.profile?.fullName ?? "Rotarian";

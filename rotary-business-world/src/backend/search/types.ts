@@ -4,6 +4,7 @@ export type SearchParams = {
   category?: string; // category name
   country?: string;
   city?: string;
+  tradeRole?: string; // TradeRole enum value, e.g. "WHOLESALER"
   page?: number;
   pageSize?: number;
   /**
@@ -23,6 +24,7 @@ export type BusinessHit = {
   industryName: string | null;
   categoryName: string | null;
   ownerVerified: boolean;
+  tradeRoles: string[];
 };
 
 export type Facet = { value: string; count: number };
@@ -35,6 +37,7 @@ export type SearchResult = {
   facets: {
     industry: Facet[];
     country: Facet[];
+    tradeRole: Facet[];
   };
   /**
    * Populated when `total === 0` and a nearby spelling was found.

@@ -10,6 +10,7 @@ const db = new PrismaClient();
 
 const EMAIL = "sanjayvanan03@gmail.com";
 const FULL_NAME = "Sanjay Vanan";
+const EMAIL_VERIFIED = new Date(); // required for PrismaAdapter ↔ Google OAuth linking
 
 async function main() {
   console.log("Wiping all user accounts and related data…");
@@ -26,10 +27,14 @@ async function main() {
   const { count } = await db.user.deleteMany({});
   console.log(`  Deleted ${count} user(s).`);
 
-  // Seed the management account (sign-in via magic-link email)
+  // Seed the management account.
+  // name + emailVerified mirror what PrismaAdapter writes on Google OAuth sign-in —
+  // without them Google login may create a second MEMBER row instead of linking here.
   const user = await db.user.create({
     data: {
       email: EMAIL,
+      name: FULL_NAME,
+      emailVerified: EMAIL_VERIFIED,
       role: "MANAGEMENT",
       status: "VERIFIED",
       profile: { create: { fullName: FULL_NAME } },

@@ -174,7 +174,7 @@ find it disagreeing with the code again, trust the code and fix this file.)
 | 1. Pay first | ✅ Razorpay orders + verify + webhook + `Payment` model + audit. `hasPaid` gates access via `requirePaid()`. |
 | 2. District admin verifies | ✅ `/admin/verifications`, roster auto-match scoring, approve/reject, district-scoped, IDOR-guarded |
 | 3. Listing approval gate | ✅ `PENDING` on create, `/admin/listings` moderation, search filters `ACTIVE` |
-| 4. Global search | ✅ FTS + trigram + industry/country facets + autocomplete + "similar businesses" rail. **Geo/distance not wired.** |
+| 4. Global search | ✅ FTS + trigram + industry/country/**supplier-type (trade role)** facets + autocomplete + "similar businesses" rail. Sellers publish `BusinessOffering` rows; titles/keywords/synonyms fold into search via denormalized `Business.offeringsText` so a business surfaces by product keyword, not just its name/category. **Geo/distance not wired; `suggest()` autocomplete doesn't yet index offerings.** |
 | 5. Reviews | ✅ `Review` model, forms, lists, one-per-member constraint |
 | 6. Management oversight | ✅ `/admin/districts` — create district, create club, assign district admin. **Cross-district stats dashboard still thin.** |
 | 7. Structural growth | ✅ New district = create record + assign admin, no code change |
@@ -188,9 +188,18 @@ member profiles, business galleries, premium navy/gold theme, `pino` logging, `/
 ### Genuinely not built
 
 - **Geo search** — `Business.lat`/`lng` exist but are never populated or queried
-- **Needs/Leads** — the "I need tyres, wholesale" → notify matching businesses feature
 - **Email sending** — no service at all (see blockers below)
-- **Redis / background worker / job queue** — everything is synchronous today
+
+### Built since this section was written (2026-08-19)
+
+- **Redis + BullMQ worker are LIVE** (`REDIS_URL` set, `src/worker/index.ts`, `npm run worker`).
+  Not synchronous anymore — image processing and lead matching run as jobs.
+- **Needs/Leads** — buyers post a `Need` (`/dashboard/needs/new`); the `match-need` worker job runs
+  the hard filter + 0–100 score + caps (`src/backend/needs/matching.ts`, `config/trade-matching.ts`)
+  and writes `NeedMatch` rows. **Delivery is IN-APP** (leads inbox `/dashboard/leads` + notification
+  bell, derived-unread via `NeedMatch.sentAt`/`viewedAt`); the email digest in `docs/NEEDS-LEADS.md`
+  is deferred (`digestedAt` reserved for it). `matchNeed`/`trade-matching` must stay free of
+  `import "server-only"` (they run in the worker's plain-Node runtime).
 
 ---
 

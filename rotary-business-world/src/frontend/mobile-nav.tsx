@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import {
+  Bell,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -22,6 +23,7 @@ export function MobileNav({
   isVerified = false,
   canMessage = false,
   unread = 0,
+  leadCount = 0,
   userId,
   userInitial,
   userName,
@@ -33,6 +35,7 @@ export function MobileNav({
   isVerified?: boolean;
   canMessage?: boolean;
   unread?: number;
+  leadCount?: number;
   userId?: string;
   userInitial?: string;
   userName?: string;
@@ -169,6 +172,22 @@ export function MobileNav({
                   >
                     <LayoutDashboard className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
                     Dashboard
+                  </Link>
+                )}
+
+                {canMessage && (
+                  <Link
+                    href="/dashboard/leads"
+                    onClick={close}
+                    className="group flex min-h-[48px] items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white active:bg-white/10"
+                  >
+                    <Bell className="h-4 w-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
+                    Leads
+                    {leadCount > 0 && (
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rotary-gold px-1.5 text-[11px] font-bold text-secondary-foreground">
+                        {leadCount > 9 ? "9+" : leadCount}
+                      </span>
+                    )}
                   </Link>
                 )}
 

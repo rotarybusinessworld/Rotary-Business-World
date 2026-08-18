@@ -7,10 +7,12 @@ import { Button } from "@/frontend/ui/button";
 import { Input, Label, Select, Textarea } from "@/frontend/ui/input";
 import { FieldError, FormError } from "@/frontend/ui/field-error";
 import { ImageUpload, GalleryUpload } from "@/frontend/dashboard/image-upload";
+import { OfferingsEditor } from "@/frontend/dashboard/offerings-editor";
+import type { OfferingInput } from "@/shared/validators";
 
 type Taxonomy = {
   industries: { id: string; name: string }[];
-  categories: { id: string; name: string; industryId: string }[];
+  categories: { id: string; name: string; industryId: string; depth?: number }[];
 };
 
 export type BusinessDefaults = {
@@ -32,6 +34,7 @@ export type BusinessDefaults = {
   gallery?: string[];
   discountPercent?: number | null;
   discountNote?: string | null;
+  offerings?: OfferingInput[];
 };
 
 function SubmitButton({ label }: { label: string }) {
@@ -62,6 +65,7 @@ export function BusinessForm({
   const [logoKey, setLogoKey] = useState(defaults.logoKey ?? "");
   const [coverKey, setCoverKey] = useState(defaults.coverKey ?? "");
   const [gallery, setGallery] = useState<string[]>(defaults.gallery ?? []);
+  const [offerings, setOfferings] = useState<OfferingInput[]>(defaults.offerings ?? []);
 
   const categories = useMemo(
     () => taxonomy.categories.filter((c) => c.industryId === industryId),
@@ -176,6 +180,15 @@ export function BusinessForm({
           </div>
         </div>
       </div>
+
+      {/* ── What you supply (seller catalog) ────────────────────── */}
+      <OfferingsEditor
+        categories={taxonomy.categories}
+        industryId={industryId}
+        value={offerings}
+        onChange={setOfferings}
+        error={state.fieldErrors?.offerings}
+      />
 
       {/* ── Contact ─────────────────────────────────────────────── */}
       <div className="space-y-4 border-t border-border pt-5">
@@ -314,6 +327,7 @@ export function BusinessForm({
       <input type="hidden" name="logoKey" value={logoKey} />
       <input type="hidden" name="coverKey" value={coverKey} />
       <input type="hidden" name="galleryKeys" value={JSON.stringify(gallery)} />
+      <input type="hidden" name="offerings" value={JSON.stringify(offerings)} />
 
       <div className="border-t border-border pt-5">
         <SubmitButton label={submitLabel} />
