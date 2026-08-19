@@ -311,13 +311,16 @@ export class PostgresSearchService implements SearchService {
    * value is unnested before counting (a business counts once per distinct role).
    */
   private async _tradeRoleFacet(where: Prisma.Sql): Promise<Facet[]> {
+    // The unnest column is aliased tr(val) — NOT "role" — because the joined
+    // "User" table has a `role` column, and a bare `role` here is ambiguous
+    // (Postgres 42702). Always qualify it as tr.val.
     const rows = await db.$queryRaw<{ value: string; count: bigint }[]>`
-      SELECT role AS value, COUNT(*)::bigint AS count
+      SELECT tr.val AS value, COUNT(*)::bigint AS count
       FROM   "Business" b
       JOIN   "User"     u ON u."id" = b."ownerId"
-      CROSS  JOIN LATERAL unnest(b."tradeRoles"::text[]) AS role
+      CROSS  JOIN LATERAL unnest(b."tradeRoles"::text[]) AS tr(val)
       WHERE  ${where}
-      GROUP  BY role
+      GROUP  BY tr.val
       ORDER  BY count DESC, value ASC
     `;
     return rows.map((r) => ({ value: r.value, count: Number(r.count) }));
